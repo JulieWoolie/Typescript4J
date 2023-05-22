@@ -1,11 +1,11 @@
 package net.forthecrown.typescript.parse.type;
 
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import net.forthecrown.typescript.parse.CompilerErrors;
 import net.forthecrown.typescript.parse.Name;
 import net.forthecrown.typescript.parse.ast.ClassDeclaration;
-import net.forthecrown.typescript.parse.parse.CompilerErrors;
 
 public class Types {
 
@@ -15,7 +15,7 @@ public class Types {
 
   public static final Type ANY = new AnyType();
 
-  private final Map<String, Type> byName = new Object2ObjectOpenHashMap<>();
+  private final Map<String, Type> byName = new HashMap<>();
   private final CompilerErrors errors;
 
   public Types(CompilerErrors errors) {

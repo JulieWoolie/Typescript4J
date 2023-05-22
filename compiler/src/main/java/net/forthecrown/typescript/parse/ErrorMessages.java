@@ -16,8 +16,8 @@ final class ErrorMessages {
     String errorFormat = "%s\n%s\n%" + (column + 1) + "s Line %s Column %s";
 
     return errorFormat.formatted(
-        CharReaderImpl.normalizeNewline(message),
-        CharReaderImpl.normalizeNewline(context),
+        CharReader.normalizeNewline(message),
+        CharReader.normalizeNewline(context),
         "^",
         lineNumber,
         column

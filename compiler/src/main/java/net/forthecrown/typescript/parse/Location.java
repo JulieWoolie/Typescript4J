@@ -1,20 +1,19 @@
 package net.forthecrown.typescript.parse;
 
-public interface Location {
+public record Location(int line, int column, int index) {
 
-  Location ZERO = new LocationImpl(0, 0, 0);
+  public static final Location ZERO = new Location(1, 0, 0);
 
-  static Location of(int line, int col, int index) {
-    if (line == 0 && col == 0 && index == 0) {
+  public static Location of(int line, int col, int index) {
+    if (line <= 1 && col == 0 && index == 0) {
       return ZERO;
     }
 
-    return new LocationImpl(line, col, index);
+    return new Location(line, col, index);
   }
 
-  int line();
-
-  int column();
-
-  int index();
+  @Override
+  public String toString() {
+    return line + ":" + column;
+  }
 }

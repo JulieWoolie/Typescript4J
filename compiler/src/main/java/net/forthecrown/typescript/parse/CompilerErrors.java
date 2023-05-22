@@ -2,15 +2,21 @@ package net.forthecrown.typescript.parse;
 
 import java.util.ArrayList;
 import java.util.List;
+import javax.tools.Diagnostic;
+import lombok.Getter;
+import lombok.Setter;
 
+@Getter
+@Setter
 public class CompilerErrors {
 
   private final List<Diagnostic> diagnostics = new ArrayList<>();
-  private final ParseErrorFactory factory;
+  private final ErrorFactory factory;
 
   private boolean errorsAreFatal = true;
+  private boolean errorThrown;
 
-  public CompilerErrors(ParseErrorFactory factory) {
+  public CompilerErrors(ErrorFactory factory) {
     this.factory = factory;
   }
 
@@ -35,8 +41,12 @@ public class CompilerErrors {
   public void addDiagnostic(Diagnostic diagnostic) {
     diagnostics.add(diagnostic);
 
-    if (diagnostic.level() == ErrorLevel.ERROR && errorsAreFatal) {
-      throw factory.create(diagnostic.location, diagnostic.message);
+    if (diagnostic.level() == ErrorLevel.ERROR) {
+      errorThrown = true;
+
+      if (errorsAreFatal) {
+        throw factory.create(diagnostic.location, diagnostic.message);
+      }
     }
   }
 
@@ -44,7 +54,7 @@ public class CompilerErrors {
     return diagnostics;
   }
 
-  public ParseErrorFactory getFactory() {
+  public ErrorFactory getFactory() {
     return factory;
   }
 

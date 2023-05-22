@@ -2,12 +2,12 @@ package net.forthecrown.typescript.parse;
 
 import java.util.Objects;
 
-final class ErrorFactoryImpl implements ParseErrorFactory {
+final class ErrorFactory {
 
   private final String messagePrefix;
   private final StringBuffer input;
 
-  public ErrorFactoryImpl(String name, StringBuffer input) {
+  public ErrorFactory(String name, StringBuffer input) {
     this.input = input;
 
     this.messagePrefix = name == null || name.isBlank()
@@ -15,14 +15,12 @@ final class ErrorFactoryImpl implements ParseErrorFactory {
         : "Error reading '%s':\n".formatted(name);
   }
 
-  @Override
   public ParseException wrap(Location location, Throwable exc) {
     var res = create(location, exc.getMessage());
     res.setStackTrace(exc.getStackTrace());
     return res;
   }
 
-  @Override
   public ParseException create(Location location, String format, Object... args) {
     Objects.requireNonNull(location);
 

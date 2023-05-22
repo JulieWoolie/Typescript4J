@@ -69,6 +69,7 @@ import static net.forthecrown.typescript.parse.TokenType.STRING_LITERAL;
 import static net.forthecrown.typescript.parse.TokenType.SUB;
 import static net.forthecrown.typescript.parse.TokenType.SWITCH;
 import static net.forthecrown.typescript.parse.TokenType.TEMPLATE_STRING;
+import static net.forthecrown.typescript.parse.TokenType.TERNARY;
 import static net.forthecrown.typescript.parse.TokenType.THIS;
 import static net.forthecrown.typescript.parse.TokenType.THROW;
 import static net.forthecrown.typescript.parse.TokenType.TRUE;
@@ -101,10 +102,12 @@ import net.forthecrown.typescript.parse.ast.EmptyStatement;
 import net.forthecrown.typescript.parse.ast.ErrorExpr;
 import net.forthecrown.typescript.parse.ast.ExprStatement;
 import net.forthecrown.typescript.parse.ast.Expression;
+import net.forthecrown.typescript.parse.ast.ForStatement;
 import net.forthecrown.typescript.parse.ast.FunctionDeclaration;
 import net.forthecrown.typescript.parse.ast.Identifier;
 import net.forthecrown.typescript.parse.ast.IfStatement;
 import net.forthecrown.typescript.parse.ast.ImportStatement;
+import net.forthecrown.typescript.parse.ast.ImportStatement.ImportedBinding;
 import net.forthecrown.typescript.parse.ast.LabelledStatement;
 import net.forthecrown.typescript.parse.ast.LexDeclarationStatement;
 import net.forthecrown.typescript.parse.ast.LexDeclarationStatement.Kind;
@@ -862,22 +865,33 @@ public class TypescriptParser {
 
     // Star import
     if (matches(MUL)) {
-      Location starLocation = next().location();
-      Identifier id = id("*");
-      id.setStart(starLocation);
-      stat.getImports().add(id);
+      next();
+      stat.setStarImport(true);
     } else if (matches(ID)) {
       Identifier id = id();
-      stat.getImports().add(id);
+
+      ImportedBinding binding = new ImportedBinding();
+      binding.setBinding(id);
+      stat.getImports().add(binding);
     } else {
       expect(CURLY_START);
 
       while (!matches(CURLY_CLOSE)) {
         notEof("inside imports");
 
-        Identifier id = id();
-        stat.getImports().add(id);
+        ImportedBinding binding = new ImportedBinding();
+        binding.setStart(peek().location());
 
+        Identifier label = id();
+        binding.setBinding(label);
+
+        if (identifierMatches("as")) {
+          next();
+          Identifier alias = id();
+          binding.setAlias(alias);
+        }
+
+        stat.getImports().add(binding);
         expectEndOrComma(CURLY_CLOSE);
       }
 
@@ -890,12 +904,17 @@ public class TypescriptParser {
       stat.setAlias(as);
     }
 
-    if (identifierMatches("from")) {
-      next();
+    Token fromKeyword = expect(ID);
 
-      StringLiteral lit = stringLiteral();
-      stat.setModuleName(lit);
+    if (!fromKeyword.value().equals("from")) {
+      errors.error(fromKeyword.location(),
+          "Expected 'from' import declaration, found '%s' instead",
+          fromKeyword.value()
+      );
     }
+
+    StringLiteral lit = stringLiteral();
+    stat.setModuleName(lit);
 
     skipLineEnd();
     return stat;

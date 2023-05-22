@@ -72,7 +72,7 @@ import static net.forthecrown.typescript.parse.TokenType.XOR;
 public class Lexer {
 
   final CharReader reader;
-  final ParseErrorFactory factory;
+  final ErrorFactory factory;
 
   Token peeked;
 
@@ -304,7 +304,7 @@ public class Lexer {
           yield numberToken;
         }
 
-        String id = reader.readString(new JavaIdPredicate());
+        String id = reader.readIdentifier();
 
         if (id.isEmpty()) {
           reader.skip();

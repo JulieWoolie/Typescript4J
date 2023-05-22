@@ -27,7 +27,7 @@ public final class CharReaders {
     StringBuffer buf = source.read();
     String name = source.name();
 
-    ParseErrorFactory factory = ErrorFactories.named(buf, name);
-    return new CharReaderImpl(buf, factory);
+    ErrorFactory factory = ErrorFactories.named(buf, name);
+    return new CharReader(buf, factory);
   }
 }

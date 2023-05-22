@@ -5,7 +5,6 @@ import java.util.stream.IntStream;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
-import org.jetbrains.annotations.NotNull;
 
 @Getter @Setter
 public class Name implements CharSequence {
@@ -41,7 +40,6 @@ public class Name implements CharSequence {
     return value.charAt(index);
   }
 
-  @NotNull
   @Override
   public String subSequence(int start, int end) {
     return value.substring(start, end);
@@ -52,13 +50,11 @@ public class Name implements CharSequence {
     return value.isEmpty();
   }
 
-  @NotNull
   @Override
   public IntStream chars() {
     return value.chars();
   }
 
-  @NotNull
   @Override
   public IntStream codePoints() {
     return value.codePoints();

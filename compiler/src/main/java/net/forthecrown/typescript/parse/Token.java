@@ -18,7 +18,7 @@ public record Token(TokenType type, String value, Location location, Location en
     return false;
   }
 
-  public void expect(ParseErrorFactory factory, TokenType type) {
+  public void expect(ErrorFactory factory, TokenType type) {
     if (is(type)) {
       return;
     }
@@ -28,7 +28,7 @@ public record Token(TokenType type, String value, Location location, Location en
     );
   }
 
-  public void expect(ParseErrorFactory factory, TokenType... types) {
+  public void expect(ErrorFactory factory, TokenType... types) {
     if (is(types)) {
       return;
     }

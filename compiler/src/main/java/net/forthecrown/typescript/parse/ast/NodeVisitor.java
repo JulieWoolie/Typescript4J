@@ -2,6 +2,7 @@ package net.forthecrown.typescript.parse.ast;
 
 import net.forthecrown.typescript.parse.ast.ClassDeclaration.FieldComponent;
 import net.forthecrown.typescript.parse.ast.ClassDeclaration.FuncComponent;
+import net.forthecrown.typescript.parse.ast.ImportStatement.ImportedBinding;
 import net.forthecrown.typescript.parse.ast.LexDeclarationStatement.SingleDeclaration;
 import net.forthecrown.typescript.parse.ast.ObjectLiteral.ObjectProperty;
 import net.forthecrown.typescript.parse.ast.SwitchStatement.ClauseCase;
@@ -53,6 +54,8 @@ public interface NodeVisitor<R, C> {
   R visitFunctionParam(ParameterNode param, C c);
 
   R visitImport(ImportStatement statement, C c);
+
+  R visitBindingImport(ImportedBinding statement, C c);
 
   R visitLabelled(LabelledStatement statement, C c);
 
