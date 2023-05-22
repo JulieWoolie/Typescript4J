@@ -9,9 +9,10 @@ import net.forthecrown.typescript.parse.ast.ClassDeclaration;
 
 public class Types {
 
-  public static final Type NUMBER = new NumberType();
-  public static final Type STRING = new StringType();
+  public static final Type NUMBER  = new NumberType();
+  public static final Type STRING  = new StringType();
   public static final Type BOOLEAN = new BooleanType();
+  public static final Type VOID    = new VoidType();
 
   public static final Type ANY = new AnyType();
 
@@ -28,6 +29,7 @@ public class Types {
       case "string"  -> STRING;
       case "boolean" -> BOOLEAN;
       case "any"     -> ANY;
+      case "void"    -> VOID;
       default        -> byName.computeIfAbsent(symbol.getValue(), s -> new ObjectType(symbol));
     };
   }

@@ -5,7 +5,7 @@ import java.util.StringJoiner;
 import java.util.function.IntPredicate;
 import net.forthecrown.typescript.parse.CharReadPredicate.Result;
 
-final class CharReader {
+public final class CharReader {
 
   public static final int EOF = -1;
   public static final int UNICODE_LENGTH = 4;

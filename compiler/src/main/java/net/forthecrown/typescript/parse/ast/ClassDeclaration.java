@@ -35,10 +35,8 @@ public class ClassDeclaration extends Statement {
   @Getter @Setter
   public static class FuncComponent extends ClassComponent {
 
-    private final List<ParameterNode> parameters = new ArrayList<>();
+    private FunctionSignature signature;
     private Block body;
-
-    private Type returnType;
 
     @Override
     public <R, C> R visit(NodeVisitor<R, C> visitor, C context) {

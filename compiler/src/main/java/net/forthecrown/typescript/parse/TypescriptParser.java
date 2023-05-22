@@ -2,8 +2,21 @@ package net.forthecrown.typescript.parse;
 
 import static net.forthecrown.typescript.parse.TokenType.ADD;
 import static net.forthecrown.typescript.parse.TokenType.AND;
-import static net.forthecrown.typescript.parse.TokenType.ARROW_FUNC;
+import static net.forthecrown.typescript.parse.TokenType.ARROW;
 import static net.forthecrown.typescript.parse.TokenType.ASSIGN;
+import static net.forthecrown.typescript.parse.TokenType.ASSIGN_ADD;
+import static net.forthecrown.typescript.parse.TokenType.ASSIGN_AND;
+import static net.forthecrown.typescript.parse.TokenType.ASSIGN_COALESCE;
+import static net.forthecrown.typescript.parse.TokenType.ASSIGN_DIV;
+import static net.forthecrown.typescript.parse.TokenType.ASSIGN_MOD;
+import static net.forthecrown.typescript.parse.TokenType.ASSIGN_MUL;
+import static net.forthecrown.typescript.parse.TokenType.ASSIGN_OR;
+import static net.forthecrown.typescript.parse.TokenType.ASSIGN_SHIFT_LEFT;
+import static net.forthecrown.typescript.parse.TokenType.ASSIGN_SHIFT_RIGHT;
+import static net.forthecrown.typescript.parse.TokenType.ASSIGN_SUB;
+import static net.forthecrown.typescript.parse.TokenType.ASSIGN_USHIFT_LEFT;
+import static net.forthecrown.typescript.parse.TokenType.ASSIGN_USHIFT_RIGHT;
+import static net.forthecrown.typescript.parse.TokenType.ASSIGN_XOR;
 import static net.forthecrown.typescript.parse.TokenType.BINARY_LITERAL;
 import static net.forthecrown.typescript.parse.TokenType.BIT_AND;
 import static net.forthecrown.typescript.parse.TokenType.BIT_OR;
@@ -77,13 +90,18 @@ import static net.forthecrown.typescript.parse.TokenType.TRY;
 import static net.forthecrown.typescript.parse.TokenType.USHIFT_LEFT;
 import static net.forthecrown.typescript.parse.TokenType.USHIFT_RIGHT;
 import static net.forthecrown.typescript.parse.TokenType.VAR;
+import static net.forthecrown.typescript.parse.TokenType.VOID;
 import static net.forthecrown.typescript.parse.TokenType.WHILE;
 import static net.forthecrown.typescript.parse.TokenType.XOR;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Supplier;
 import net.forthecrown.typescript.parse.ast.ArrayLiteral;
+import net.forthecrown.typescript.parse.ast.ArrowFunction;
 import net.forthecrown.typescript.parse.ast.BinaryExpr;
 import net.forthecrown.typescript.parse.ast.BinaryExpr.Operation;
 import net.forthecrown.typescript.parse.ast.Block;
@@ -94,6 +112,8 @@ import net.forthecrown.typescript.parse.ast.ClassDeclaration;
 import net.forthecrown.typescript.parse.ast.ClassDeclaration.ClassComponent;
 import net.forthecrown.typescript.parse.ast.ClassDeclaration.FieldComponent;
 import net.forthecrown.typescript.parse.ast.ClassDeclaration.FuncComponent;
+import net.forthecrown.typescript.parse.ast.CompilationUnit;
+import net.forthecrown.typescript.parse.ast.ConditionalExpr;
 import net.forthecrown.typescript.parse.ast.ContinueStatement;
 import net.forthecrown.typescript.parse.ast.DebuggerStatement;
 import net.forthecrown.typescript.parse.ast.DoWhileStatement;
@@ -102,8 +122,10 @@ import net.forthecrown.typescript.parse.ast.EmptyStatement;
 import net.forthecrown.typescript.parse.ast.ErrorExpr;
 import net.forthecrown.typescript.parse.ast.ExprStatement;
 import net.forthecrown.typescript.parse.ast.Expression;
+import net.forthecrown.typescript.parse.ast.ForInOfStatement;
 import net.forthecrown.typescript.parse.ast.ForStatement;
 import net.forthecrown.typescript.parse.ast.FunctionDeclaration;
+import net.forthecrown.typescript.parse.ast.FunctionSignature;
 import net.forthecrown.typescript.parse.ast.Identifier;
 import net.forthecrown.typescript.parse.ast.IfStatement;
 import net.forthecrown.typescript.parse.ast.ImportStatement;
@@ -144,6 +166,29 @@ import net.forthecrown.typescript.parse.type.Type;
 import net.forthecrown.typescript.parse.type.Types;
 
 public class TypescriptParser {
+
+  // Radix constants
+  public static final int DEF_RADIX = 10;
+  public static final int HEX_RADIX = 16;
+  public static final int BIN_RADIX  = 2;
+  public static final int OCT_RADIX  = 8;
+
+  public static Set<TokenType> ASSIGNMENT_TOKENS = EnumSet.of(
+      ASSIGN,
+      ASSIGN_OR,
+      ASSIGN_AND,
+      ASSIGN_XOR,
+      ASSIGN_SUB,
+      ASSIGN_ADD,
+      ASSIGN_DIV,
+      ASSIGN_MUL,
+      ASSIGN_MOD,
+      ASSIGN_SHIFT_LEFT,
+      ASSIGN_SHIFT_RIGHT,
+      ASSIGN_USHIFT_LEFT,
+      ASSIGN_USHIFT_RIGHT,
+      ASSIGN_COALESCE
+  );
 
   private final Lexer lexer;
   private final CompilerErrors errors;
@@ -223,6 +268,16 @@ public class TypescriptParser {
     return next;
   }
 
+  public Token expectIdentifier(String id) {
+    Token token = expect("Expected keyword '" + id + "', found ${actual}");
+
+    if (!token.value().equals(id)) {
+      errors.error(token.location(), "Expected keyword '%s' found '%s'", id, token.value());
+    }
+
+    return token;
+  }
+
   public Token expect(TokenType types) {
     Token next = next();
     next.expect(errors.getFactory(), types);
@@ -245,6 +300,18 @@ public class TypescriptParser {
     }
 
     errors.error(token.location(), "Encountered EOF%s", extra == null ? "" : (" " + extra));
+  }
+
+  public CompilationUnit parse() {
+    CompilationUnit unit = new CompilationUnit();
+    unit.setStart(peek().location());
+
+    while (lexer.hasNext()) {
+      Statement statement = statement(true);
+      unit.getStatements().add(statement);
+    }
+
+    return unit;
   }
 
   Statement statement() {
@@ -338,7 +405,11 @@ public class TypescriptParser {
   Statement exprStatement() {
     var location = peek().location();
     Expression expr = expr();
-    skipLineEnd();
+
+    if (matches(SEMICOLON)) {
+      next();
+    }
+
     return new ExprStatement(location, expr);
   }
 
@@ -353,7 +424,10 @@ public class TypescriptParser {
       stat.setMessage(lit);
     }
 
-    skipLineEnd();
+    if (matches(SEMICOLON)) {
+      next();
+    }
+
     return stat;
   }
 
@@ -386,7 +460,11 @@ public class TypescriptParser {
     }
 
     var expr = expr();
-    skipLineEnd();
+
+    if (matches(SEMICOLON)) {
+      next();
+    }
+
     return expr;
   }
 
@@ -409,9 +487,9 @@ public class TypescriptParser {
       decl.setSuperClass(extendsName);
     }
 
-    expect(CURLY_START);
+    Location curlyStrat = expect(CURLY_START).location();
 
-    while (!peek().is(CURLY_CLOSE)) {
+    while (!matches(CURLY_CLOSE)) {
       notEof("inside class");
 
       boolean isPrivate;
@@ -429,10 +507,11 @@ public class TypescriptParser {
 
       if (matches(PAREN_START)) {
         FuncComponent c = new FuncComponent();
+        c.setSignature(new FunctionSignature());
         component = c;
 
-        parameterList(c.getParameters());
-        c.setReturnType(optionalType());
+        parameterList(c.getSignature().getParameters());
+        c.getSignature().setReturnType(optionalType());
 
         Block body = blockStatement();
         c.setBody(body);
@@ -453,6 +532,10 @@ public class TypescriptParser {
       component.setPrivateComponent(isPrivate);
 
       decl.getComponents().add(component);
+
+      if (matches(SEMICOLON)) {
+        next();
+      }
     }
 
     expect(CURLY_CLOSE);
@@ -500,7 +583,7 @@ public class TypescriptParser {
 
     if (matches(ASSIGN)) {
       next();
-      Expression val = expr();
+      Expression val = assignExpr();
       node.setDefaultValue(val);
     }
 
@@ -517,91 +600,111 @@ public class TypescriptParser {
   }
 
   Type parseType() {
-    if (matches(ID)) {
-      Identifier id = id();
-      Type type = types.fromName(id.getName());
-
-      // < > parameterized type
-      if (matches(LT)) {
-        var start = next().location();
-
-        List<Type> params = new ArrayList<>();
-
-        while (!matches(GT)) {
-          notEof("inside parameterized type");
-
-          Type paramType = parseType();
-          params.add(paramType);
-
-          expectEndOrComma(GT);
-        }
-
-        if (params.isEmpty()) {
-          errors.error(start, "Empty parameters");
-        }
-
-        // If the type is 'Array' then an array type is returned by the method
-        type = types.parameterized(type, params);
-      }
-
-      // [ ] array type, these can be repeated, like 'TypeName[][]'
-      while (matches(SQUARE_START)) {
-        next();
-        expect(SQUARE_CLOSE);
-        type = types.array(type);
-      }
-
-      return type;
-    } else if (matches(PAREN_START)) {
+    if (matches(VOID)) {
       next();
-      FunctionType funcType = new FunctionType();
+      return Types.VOID;
+    }
 
-      while (!matches(PAREN_CLOSE)) {
-        notEof("inside type annotation");
+    if (matches(ID)) {
+      return regularType();
+    }
 
-        Identifier id = id();
-        expect(COLON);
-        Type type = parseType();
+    if (matches(PAREN_START)) {
+      return functionType();
+    }
 
-        ParameterType param = new ParameterType(id.getName(), type);
-        funcType.getParams().add(param);
+    errors.error(peek().location(), "Invalid type notation token");
+    return null;
+  }
 
-        expectEndOrComma(PAREN_CLOSE);
+  Type regularType() {
+    Identifier id = id();
+    Type type = types.fromName(id.getName());
+
+    // < > parameterized type
+    if (matches(LT)) {
+      var start = next().location();
+
+      List<Type> params = new ArrayList<>();
+
+      while (!matches(GT)) {
+        notEof("inside parameterized type");
+
+        Type paramType = parseType();
+        params.add(paramType);
+
+        expectEndOrComma(GT);
       }
 
-      expect(PAREN_CLOSE);
-      expect(ARROW_FUNC);
+      if (params.isEmpty()) {
+        errors.error(start, "Empty parameters");
+      }
 
-      Type returnType = parseType();
-      funcType.setReturnType(returnType);
-
-      return types.addType(funcType);
-    } else {
-      errors.error(peek().location(), "Invalid type notation token");
-      return null;
+      // If the type is 'Array' then an array type is returned by the method
+      type = types.parameterized(type, params);
     }
+
+    // [ ] array type, these can be repeated, like 'TypeName[][]'
+    while (matches(SQUARE_START)) {
+      next();
+      expect(SQUARE_CLOSE);
+      type = types.array(type);
+    }
+
+    return type;
+  }
+
+  Type functionType() {
+    next();
+    FunctionType funcType = new FunctionType();
+
+    while (!matches(PAREN_CLOSE)) {
+      notEof("inside type annotation");
+
+      Identifier id = id();
+      expect(COLON);
+      Type type = parseType();
+
+      ParameterType param = new ParameterType(id.getName(), type);
+      funcType.getParams().add(param);
+
+      expectEndOrComma(PAREN_CLOSE);
+    }
+
+    expect(PAREN_CLOSE);
+    expect(ARROW);
+
+    Type returnType = parseType();
+    funcType.setReturnType(returnType);
+
+    return types.addType(funcType);
   }
 
   Statement functionDeclaration() {
     Location start = expect(FUNCTION).location();
 
+    errors.printDebugContext(start, "Function declaration");
+
     FunctionDeclaration decl = new FunctionDeclaration();
+    FunctionSignature node = new FunctionSignature();
+
+    decl.setFunction(node);
     decl.setStart(start);
 
     Identifier name = id();
     decl.setName(name);
 
     if (matches(LT)) {
-      typeParameters(decl.getTypeParameters());
+      typeParameters(node.getTypeParameters());
     }
 
-    parameterList(decl.getParameters());
-    decl.setReturnType(optionalType());
+    parameterList(node.getParameters());
+    node.setReturnType(optionalType());
 
     Block body = blockStatement();
     decl.setBody(body);
 
-    return body;
+    return decl;
   }
 
   void typeParameters(List<TypeParameter> typeParameters) {
@@ -653,6 +756,7 @@ public class TypescriptParser {
       SingleDeclaration decl = new SingleDeclaration();
       decl.setStart(loc);
       decl.setIdentifier(id);
+      decl.setType(optionalType());
 
       if (matches(ASSIGN)) {
         next();
@@ -666,7 +770,6 @@ public class TypescriptParser {
       expectEndOrComma(SEMICOLON);
     }
 
-    skipLineEnd();
     return node;
   }
 
@@ -732,6 +835,10 @@ public class TypescriptParser {
     expect(PAREN_START);
     Expression condition = expr();
     expect(PAREN_CLOSE);
+
+    if (matches(SEMICOLON)) {
+      next();
+    }
 
     statement.setExpression(condition);
 
@@ -825,7 +932,10 @@ public class TypescriptParser {
       stat.setLabel(id());
     }
 
-    skipLineEnd();
+    if (matches(SEMICOLON)) {
+      next();
+    }
+
     return stat;
   }
 
@@ -840,14 +950,27 @@ public class TypescriptParser {
       statement.setLabel(id());
     }
 
-    skipLineEnd();
+    if (matches(SEMICOLON)) {
+      next();
+    }
+
     return statement;
   }
 
   Statement forStatement() {
     Location start = expect(FOR).location();
+
     expect(PAREN_START);
 
+    TokenType declType = expect(LET, VAR).type();
+
+    // Looking at the standard (ECMA-262, 13th edition, June 2022) page 799
+    // with a bottle of wine and just trying to find any motivation to write
+    // this
+
+    expect(PAREN_CLOSE);
+
+    Statement body = statement();
   }
 
   Statement importStatement() {
@@ -859,7 +982,6 @@ public class TypescriptParser {
     if (matches(STRING_LITERAL)) {
       StringLiteral lit = stringLiteral();
       stat.setModuleName(lit);
-      skipLineEnd();
       return stat;
     }
 
@@ -916,16 +1038,7 @@ public class TypescriptParser {
     StringLiteral lit = stringLiteral();
     stat.setModuleName(lit);
 
-    skipLineEnd();
     return stat;
-  }
-
-  void skipLineEnd() {
-    if (!matches(SEMICOLON)) {
-      return;
-    }
-
-    next();
   }
 
   Expression primaryExpr() {
@@ -957,18 +1070,35 @@ public class TypescriptParser {
   }
 
   NumberLiteral numberLiteral() {
-    Token token = expect(NUMBER_LITERAL, HEX_LITERAL, OCTAL_LITERAL, BINARY_LITERAL);
-    Location loc = token.location();
-    double value;
+    Token token = expect(
+        NUMBER_LITERAL, HEX_LITERAL, OCTAL_LITERAL,
+        BINARY_LITERAL
+    );
 
-    if (token.is(HEX_LITERAL)) {
-      value = Long.parseLong(token.value(), 16);
-    } else if (token.is(OCTAL_LITERAL)) {
-      value = Long.parseLong(token.value(), 8);
-    } else if (token.is(BINARY_LITERAL)) {
-      value = Long.parseLong(token.value(), 2);
+    Location loc = token.location();
+
+    String strVal = token.value();
+    boolean bigInt = strVal.endsWith("n") || strVal.endsWith("N");
+
+    if (bigInt) {
+      strVal = strVal.substring(0, strVal.length() - 1);
+    }
+
+    int radix = switch (token.type()) {
+      case HEX_LITERAL    -> HEX_RADIX;
+      case OCTAL_LITERAL  -> OCT_RADIX;
+      case BINARY_LITERAL -> BIN_RADIX;
+      default             -> DEF_RADIX;
+    };
+
+    Number value;
+
+    if (bigInt) {
+      value = new BigInteger(strVal, radix);
+    } else if (radix == DEF_RADIX) {
+      value = Double.parseDouble(strVal);
     } else {
-      value = Double.parseDouble(token.value());
+      value = Long.parseLong(strVal, radix);
     }
 
     return new NumberLiteral(loc, value);
@@ -1049,21 +1179,20 @@ public class TypescriptParser {
         case ID -> id();
         case STRING_LITERAL -> stringLiteral();
         case NUMBER_LITERAL, OCTAL_LITERAL, HEX_LITERAL, BINARY_LITERAL -> numberLiteral();
-        default -> {
-          errors.error(peek().location(), "Invalid property key token, must be an identifier, "
-              + "quoted string, or number literal"
-          );
-
-          yield null;
-        }
+        default -> errorExpr(
+            "Invalid property key token, must be an identifier, "
+                + "quoted string, or number literal"
+        );
       };
 
-      expect(
-          "Expected property key-value separator ${expected}, found ${actual}",
-          COLON
-      );
+      Expression value;
 
-      Expression value = assignExpr();
+      if (matches(COLON)) {
+        next();
+        value = assignExpr();
+      } else {
+        value = null;
+      }
 
       ObjectProperty property = new ObjectProperty();
       property.setStart(key.getStart());
@@ -1094,14 +1223,108 @@ public class TypescriptParser {
 
   Expression templateLiteral() {
     Token token = expect(TEMPLATE_STRING);
+    errors.error(token.location(), "Template strings not yet supported");
+    return new StringLiteral(token.location(), token.value());
   }
 
   Expression ternary() {
+    Expression expr = coalesceExpr();
 
+    if (!matches(TERNARY)) {
+      return expr;
+    }
+
+    Location start = next().location();
+
+    ConditionalExpr cond = new ConditionalExpr();
+    cond.setStart(start);
+    cond.setCondition(expr);
+
+    Expression onTrue = assignExpr();
+    cond.setOnTrue(onTrue);
+
+    expect(COLON);
+
+    Expression onFalse = assignExpr();
+    cond.setOnFalse(onFalse);
+
+    return cond;
   }
 
   Expression assignExpr() {
+    Expression ternary = ternary();
 
+    Token peek = peek();
+    TokenType peekType = peek.type();
+
+    if (peek.is(ARROW)) {
+      return arrowFunction(ternary.getStart().index());
+    }
+
+    if (!ASSIGNMENT_TOKENS.contains(peekType)) {
+      return ternary;
+    }
+
+    next();
+
+    // So... many (._. )
+    Operation operation = switch (peek.type()) {
+      case ASSIGN_OR            -> Operation.ASSIGN_OR;
+      case ASSIGN_AND           -> Operation.ASSIGN_AND;
+      case ASSIGN_XOR           -> Operation.ASSIGN_XOR;
+      case ASSIGN_SUB           -> Operation.ASSIGN_SUB;
+      case ASSIGN_ADD           -> Operation.ASSIGN_ADD;
+      case ASSIGN_DIV           -> Operation.ASSIGN_DIV;
+      case ASSIGN_MUL           -> Operation.ASSIGN_MUL;
+      case ASSIGN_MOD           -> Operation.ASSIGN_MOD;
+      case ASSIGN_SHIFT_LEFT    -> Operation.ASSIGN_SHIFT_LEFT;
+      case ASSIGN_SHIFT_RIGHT   -> Operation.ASSIGN_SHIFT_RIGHT;
+      case ASSIGN_USHIFT_LEFT   -> Operation.ASSIGN_USHIFT_LEFT;
+      case ASSIGN_USHIFT_RIGHT  -> Operation.ASSIGN_USHIFT_RIGHT;
+      case ASSIGN_COALESCE      -> Operation.ASSIGN_COALESCE;
+
+      default                   -> Operation.ASSIGN;
+    };
+
+    Expression rhs = assignExpr();
+
+    BinaryExpr expr = new BinaryExpr();
+    expr.setOperation(operation);
+    expr.setStart(peek.location());
+    expr.setLeft(ternary);
+    expr.setRight(rhs);
+
+    return expr;
+  }
+
+  Expression arrowFunction(final int parenthesesStart) {
+    setCursor(parenthesesStart);
+
+    ArrowFunction arrow = new ArrowFunction();
+    FunctionSignature signature = new FunctionSignature();
+
+    arrow.setStart(peek().location());
+    arrow.setNode(signature);
+
+    if (matches(LT)) {
+      typeParameters(signature.getTypeParameters());
+    }
+
+    if (matches(PAREN_START)) {
+      parameterList(signature.getParameters());
+    } else {
+      ParameterNode param = parameter();
+      signature.getParameters().add(param);
+    }
+
+    signature.setReturnType(optionalType());
+
+    expect(ARROW);
+
+    Statement body = statement();
+    arrow.setBody(body);
+
+    return arrow;
   }
 
   private Expression _recursiveExpr(Supplier<Expression> previous,
@@ -1112,6 +1335,7 @@ public class TypescriptParser {
     Location start = expr.getStart();
 
     while (matches(type)) {
+      next();
       expr = new BinaryExpr(start, operation, expr, previous.get());
     }
 
@@ -1290,14 +1514,6 @@ public class TypescriptParser {
     };
   }
 
-  Expression updateExpr() {
-
-  }
-
-  Expression lhsExpr() {
-
-  }
-
   Expression newExpr() {
     Location start = next().location();
     Expression member = memberExpr(false);
@@ -1319,7 +1535,11 @@ public class TypescriptParser {
   }
 
   Expression callExpr(Expression target) {
-    Location start = next().location();
+    if (!matches(PAREN_START)) {
+      expect(PAREN_CLOSE);
+    }
+
+    Location start = peek().location();
 
     CallExpr call = new CallExpr();
     call.setStart(start);
@@ -1347,16 +1567,26 @@ public class TypescriptParser {
 
     outer: while (true) {
       switch (peek().type()) {
+
+        // Property access: '.' expr | '.?' expr | '[' expr ']'
         case DOT, OPTIONAL, SQUARE_START -> {
           expr = propertyAccess(expr);
         }
 
+        // () function call expression
         case PAREN_START -> {
           if (!allowCall) {
             break outer;
           }
 
           expr = callExpr(expr);
+        }
+
+        // Tagged template literal
+        case TEMPLATE_STRING -> {
+          errors.error(peek().location(),
+              "Tagged template literals not yet supported"
+          );
         }
 
         default -> {
@@ -1393,6 +1623,7 @@ public class TypescriptParser {
     PropertyAccessExpr expr = new PropertyAccessExpr();
     expr.setTarget(parent);
     expr.setStart(start.location());
+    expr.setElementAccess(start.is(SQUARE_START));
 
     if (start.is(SQUARE_START)) {
       Expression prop = expr();
@@ -1405,14 +1636,28 @@ public class TypescriptParser {
       boolean optional = start.is(OPTIONAL);
       expr.setOptional(optional);
 
-      // TODO
-      throw new IllegalStateException("TODO");
+      Identifier property = id();
+      expr.setProperty(property);
     }
 
     return expr;
   }
 
   Expression expr() {
+    Expression expr = assignExpr();
 
+    while (matches(COMMA)) {
+      next();
+
+      BinaryExpr bin = new BinaryExpr();
+      bin.setStart(expr.getStart());
+      bin.setOperation(Operation.COMMA);
+      bin.setLeft(expr);
+      bin.setRight(assignExpr());
+
+      expr = bin;
+    }
+
+    return expr;
   }
 }

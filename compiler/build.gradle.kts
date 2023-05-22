@@ -9,6 +9,7 @@ repositories {
 
 dependencies {
   testImplementation("org.junit.jupiter:junit-jupiter:5.9.1")
+  testImplementation("com.google.guava:guava:31.1-jre")
 }
 
 tasks {

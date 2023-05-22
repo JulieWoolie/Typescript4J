@@ -11,6 +11,8 @@ import net.forthecrown.typescript.parse.ast.TryStatement.Catch;
 
 public interface NodeVisitor<R, C> {
 
+  R visitRoot(CompilationUnit unit, C c);
+
   /* ----------------------------- STATEMENTS ------------------------------ */
 
   R visitIf(IfStatement statement, C c);
@@ -106,4 +108,10 @@ public interface NodeVisitor<R, C> {
   R visitFunctionCall(CallExpr expr, C c);
 
   R visitErrorExpr(ErrorExpr expr, C c);
+
+  R visitConditional(ConditionalExpr expr, C c);
+
+  R visitArrowFunction(ArrowFunction expr, C c);
+
+  R visitParenthisized(ParenExpr expr, C c);
 }

@@ -2,7 +2,7 @@ package net.forthecrown.typescript.parse;
 
 import static net.forthecrown.typescript.parse.TokenType.ADD;
 import static net.forthecrown.typescript.parse.TokenType.AND;
-import static net.forthecrown.typescript.parse.TokenType.ARROW_FUNC;
+import static net.forthecrown.typescript.parse.TokenType.ARROW;
 import static net.forthecrown.typescript.parse.TokenType.ASSIGN;
 import static net.forthecrown.typescript.parse.TokenType.ASSIGN_ADD;
 import static net.forthecrown.typescript.parse.TokenType.ASSIGN_AND;
@@ -21,7 +21,7 @@ import static net.forthecrown.typescript.parse.TokenType.BIT_AND;
 import static net.forthecrown.typescript.parse.TokenType.BIT_NOT;
 import static net.forthecrown.typescript.parse.TokenType.BIT_OR;
 import static net.forthecrown.typescript.parse.TokenType.COALESCE;
-import static net.forthecrown.typescript.parse.TokenType.COALESCE_ASSIGN;
+import static net.forthecrown.typescript.parse.TokenType.ASSIGN_COALESCE;
 import static net.forthecrown.typescript.parse.TokenType.COLON;
 import static net.forthecrown.typescript.parse.TokenType.COLON_COLON;
 import static net.forthecrown.typescript.parse.TokenType.COMMA;
@@ -150,7 +150,7 @@ public class Lexer {
 
           if (p == '=') {
             reader.skip();
-            yield token(COALESCE_ASSIGN);
+            yield token(ASSIGN_COALESCE);
           }
 
           yield token(COALESCE);
@@ -275,7 +275,7 @@ public class Lexer {
 
         if (p == '>') {
           reader.skip();
-          yield token(ARROW_FUNC);
+          yield token(ARROW);
         }
 
         if (p == '=') {
@@ -312,7 +312,6 @@ public class Lexer {
         }
 
         TokenType keyword = TokenType.keywordLookup.get(id);
-        System.out.printf("Looked up id '%s', found=%s\n", id, keyword);
 
         if (keyword == null) {
           yield token(ID, id);
@@ -354,7 +353,7 @@ public class Lexer {
           throw factory.create(currentLocation, "Invalid hex sequence");
         }
 
-        return token(HEX_LITERAL, sign + hex);
+        return token(HEX_LITERAL, sign + hex + optionalBigIntSuffix());
       }
 
       if (p == 'b' || p == 'B') {
@@ -365,7 +364,7 @@ public class Lexer {
           throw factory.create(currentLocation, "Invalid binary sequence");
         }
 
-        return token(BINARY_LITERAL, binary);
+        return token(BINARY_LITERAL, binary + optionalBigIntSuffix());
       }
 
       boolean octalEnforced;
@@ -384,9 +383,9 @@ public class Lexer {
           throw factory.create(currentLocation, "Invalid octal sequence");
         }
 
-        return token(NUMBER_LITERAL, "0");
+        return token(NUMBER_LITERAL, "0" + optionalBigIntSuffix());
       } else {
-        return token(OCTAL_LITERAL, octal);
+        return token(OCTAL_LITERAL, octal + optionalBigIntSuffix());
       }
     }
 
@@ -396,14 +395,26 @@ public class Lexer {
       return null;
     }
 
+    number += optionalBigIntSuffix();
+
     // Hacky-ahh solution to this method throwing parsing correctly when there's illegal
     // characters following the number literal
     int p = reader.peek();
-    if (Character.isJavaIdentifierStart(p) || Character.isJavaIdentifierPart(p)) {
+
+    if (Character.isJavaIdentifierStart(p)) {
       return null;
     }
 
     return token(NUMBER_LITERAL, sign + number);
+  }
+
+  private String optionalBigIntSuffix() {
+    if (reader.peek() == 'N' || reader.peek() == 'n') {
+      reader.skip();
+      return "N";
+    }
+
+    return "";
   }
 
   private Token mathOperator(char ch, TokenType twice, TokenType lone, TokenType assign) {

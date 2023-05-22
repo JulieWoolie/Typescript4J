@@ -6,9 +6,9 @@ import net.forthecrown.typescript.parse.Location;
 @Getter
 public class NumberLiteral extends Expression {
 
-  private final double value;
+  private final Number value;
 
-  public NumberLiteral(Location start, double value) {
+  public NumberLiteral(Location start, Number value) {
     super(start);
     this.value = value;
   }

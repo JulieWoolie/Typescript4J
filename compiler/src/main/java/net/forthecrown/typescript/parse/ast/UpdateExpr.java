@@ -1,7 +1,10 @@
 package net.forthecrown.typescript.parse.ast;
 
+import lombok.Getter;
+import lombok.Setter;
 import net.forthecrown.typescript.parse.Location;
 
+@Getter @Setter
 public class UpdateExpr extends Expression {
 
   private Expression expr;

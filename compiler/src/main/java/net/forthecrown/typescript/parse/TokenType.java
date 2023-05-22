@@ -1,130 +1,139 @@
 package net.forthecrown.typescript.parse;
 
+import static net.forthecrown.typescript.parse.TokenType.Kind.BINARY;
+import static net.forthecrown.typescript.parse.TokenType.Kind.BRACKET;
+import static net.forthecrown.typescript.parse.TokenType.Kind.KEYWORD;
+import static net.forthecrown.typescript.parse.TokenType.Kind.LITERAL;
+import static net.forthecrown.typescript.parse.TokenType.Kind.OTHER;
+import static net.forthecrown.typescript.parse.TokenType.Kind.UNARY;
+import static net.forthecrown.typescript.parse.TokenType.Kind.UNSUPPORTED;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
 public enum TokenType {
 
-  EOF                   (Kind.OTHER),
-  EOL                   (Kind.OTHER),
-  UNKNOWN               (Kind.OTHER),
+  EOF                   (OTHER),
+  EOL                   (OTHER),
+  UNKNOWN               (OTHER),
 
-  HASHTAG               (Kind.OTHER, '#'),
+  HASHTAG               (OTHER, '#'),
 
   // Operators
-  NEGATE                (Kind.UNARY, '!'),
-  INC                   (Kind.UNARY, "++"),
-  DEC                   (Kind.UNARY, "--"),
-  BIT_NOT               (Kind.UNARY, "~"),
+  NEGATE                (UNARY, '!'),
+  INC                   (UNARY, "++"),
+  DEC                   (UNARY, "--"),
+  BIT_NOT               (UNARY, "~"),
 
-  DOT                   (Kind.BINARY, '.'),
-  DOT_DOT               (Kind.BINARY, ".."),
-  ELLIPSES              (Kind.BINARY, "..."),
-  COLON                 (Kind.BINARY, ':'),
-  COLON_COLON           (Kind.BINARY, "::"),
-  SEMICOLON             (Kind.BINARY, ';'),
-  COMMA                 (Kind.BINARY, ','),
-  ASSIGN                (Kind.BINARY, '='),
-  EQUALS                (Kind.BINARY, "=="),
-  N_EQUALS              (Kind.BINARY, "!="),
-  STRICT_EQUALS         (Kind.BINARY, "==="),
-  STRICT_N_EQUALS       (Kind.BINARY, "!=="),
-  MOD                   (Kind.BINARY, "%"),
-  ASSIGN_MOD            (Kind.BINARY, "%="),
-  BIT_AND               (Kind.BINARY, "&"),
-  AND                   (Kind.BINARY, "&&"),
-  ASSIGN_AND            (Kind.BINARY, "&="),
-  BIT_OR                (Kind.BINARY, "|"),
-  OR                    (Kind.BINARY, "||"),
-  ASSIGN_OR             (Kind.BINARY, "|="),
-  XOR                   (Kind.BINARY, "^"),
-  ASSIGN_XOR            (Kind.BINARY, "^="),
-  ADD                   (Kind.BINARY, "+"),
-  ASSIGN_ADD            (Kind.BINARY, "+="),
-  SUB                   (Kind.BINARY, "-"),
-  ASSIGN_SUB            (Kind.BINARY, "-="),
-  MUL                   (Kind.BINARY, "*"),
-  EXPONENTIAL           (Kind.BINARY, "**"),
-  ASSIGN_MUL            (Kind.BINARY, "*="),
-  DIV                   (Kind.BINARY, "/"),
-  ASSIGN_DIV            (Kind.BINARY, "/="),
-  LT                    (Kind.BINARY, "<"),
-  LT_EQ                 (Kind.BINARY, "<="),
-  GT                    (Kind.BINARY, ">"),
-  GT_EQ                 (Kind.BINARY, ">="),
-  SHIFT_LEFT            (Kind.BINARY, "<<"),
-  ASSIGN_SHIFT_LEFT     (Kind.BINARY, "<<="),
-  USHIFT_LEFT           (Kind.BINARY, "<<<"),
-  ASSIGN_USHIFT_LEFT    (Kind.BINARY, "<<<="),
-  SHIFT_RIGHT           (Kind.BINARY, ">>"),
-  USHIFT_RIGHT          (Kind.BINARY, ">>>"),
-  ASSIGN_SHIFT_RIGHT    (Kind.BINARY, ">>="),
-  ASSIGN_USHIFT_RIGHT   (Kind.BINARY, ">>>="),
-  TERNARY               (Kind.BINARY, "?"),
-  OPTIONAL              (Kind.BINARY, "?."),
-  COALESCE              (Kind.BINARY, "??"),
-  COALESCE_ASSIGN       (Kind.BINARY, "??="),
+  DOT                   (BINARY, '.'),
+  DOT_DOT               (BINARY, ".."),
+  ELLIPSES              (BINARY, "..."),
+  COLON                 (BINARY, ':'),
+  COLON_COLON           (BINARY, "::"),
+  SEMICOLON             (BINARY, ';'),
+  COMMA                 (BINARY, ','),
+  ASSIGN                (BINARY, '='),
+  EQUALS                (BINARY, "=="),
+  N_EQUALS              (BINARY, "!="),
+  STRICT_EQUALS         (BINARY, "==="),
+  STRICT_N_EQUALS       (BINARY, "!=="),
+  MOD                   (BINARY, "%"),
+  ASSIGN_MOD            (BINARY, "%="),
+  BIT_AND               (BINARY, "&"),
+  AND                   (BINARY, "&&"),
+  ASSIGN_AND            (BINARY, "&="),
+  BIT_OR                (BINARY, "|"),
+  OR                    (BINARY, "||"),
+  ASSIGN_OR             (BINARY, "|="),
+  XOR                   (BINARY, "^"),
+  ASSIGN_XOR            (BINARY, "^="),
+  ADD                   (BINARY, "+"),
+  ASSIGN_ADD            (BINARY, "+="),
+  SUB                   (BINARY, "-"),
+  ASSIGN_SUB            (BINARY, "-="),
+  MUL                   (BINARY, "*"),
+  EXPONENTIAL           (BINARY, "**"),
+  ASSIGN_MUL            (BINARY, "*="),
+  DIV                   (BINARY, "/"),
+  ASSIGN_DIV            (BINARY, "/="),
+  LT                    (BINARY, "<"),
+  LT_EQ                 (BINARY, "<="),
+  GT                    (BINARY, ">"),
+  GT_EQ                 (BINARY, ">="),
+  SHIFT_LEFT            (BINARY, "<<"),
+  ASSIGN_SHIFT_LEFT     (BINARY, "<<="),
+  USHIFT_LEFT           (BINARY, "<<<"),
+  ASSIGN_USHIFT_LEFT    (BINARY, "<<<="),
+  SHIFT_RIGHT           (BINARY, ">>"),
+  USHIFT_RIGHT          (BINARY, ">>>"),
+  ASSIGN_SHIFT_RIGHT    (BINARY, ">>="),
+  ASSIGN_USHIFT_RIGHT   (BINARY, ">>>="),
+  TERNARY               (BINARY, "?"),
+  OPTIONAL              (BINARY, "?."),
+  COALESCE              (BINARY, "??"),
+  ASSIGN_COALESCE       (BINARY, "??="),
 
-  ARROW_FUNC            (Kind.OTHER, "=>"),
+  ARROW(OTHER, "=>"),
 
   // Keywords
-  EXPORT                (Kind.UNSUPPORTED, "export"),
-  YIELD                 (Kind.UNSUPPORTED, "yield"),
+  EXPORT                (UNSUPPORTED, "export"),
+  YIELD                 (UNSUPPORTED, "yield"),
 
-  BREAK                 (Kind.KEYWORD, "break"),
-  CASE                  (Kind.KEYWORD, "case"),
-  CATCH                 (Kind.KEYWORD, "catch"),
-  CLASS                 (Kind.KEYWORD, "class"),
-  CONST                 (Kind.KEYWORD, "const"),
-  CONTINUE              (Kind.KEYWORD, "continue"),
-  DEBUGGER              (Kind.KEYWORD, "debugger"),
-  DEFAULT               (Kind.KEYWORD, "default"),
-  DELETE                (Kind.KEYWORD, "delete"),
-  DO                    (Kind.KEYWORD, "do"),
-  ELSE                  (Kind.KEYWORD, "else"),
-  ENUM                  (Kind.KEYWORD, "enum"),
-  EXTENDS               (Kind.KEYWORD, "extends"),
-  FINALLY               (Kind.KEYWORD, "finally"),
-  FOR                   (Kind.KEYWORD, "for"),
-  FUNCTION              (Kind.KEYWORD, "function"),
-  IF                    (Kind.KEYWORD, "if"),
-  IMPORT                (Kind.KEYWORD, "import"),
-  IN                    (Kind.KEYWORD, "in"),
-  INSTANCE_OF           (Kind.KEYWORD, "instanceof"),
-  INTERFACE             (Kind.KEYWORD, "interface"),
-  LET                   (Kind.KEYWORD, "let"),
-  NEW                   (Kind.KEYWORD, "new"),
-  NULL                  (Kind.KEYWORD, "null"),
-  RETURN                (Kind.KEYWORD, "return"),
-  SUPER                 (Kind.KEYWORD, "super"),
-  SWITCH                (Kind.KEYWORD, "switch"),
-  THIS                  (Kind.KEYWORD, "this"),
-  THROW                 (Kind.KEYWORD, "throw"),
-  TRY                   (Kind.KEYWORD, "try"),
-  TYPE_OF               (Kind.KEYWORD, "typeof"),
-  VAR                   (Kind.KEYWORD, "var"),
-  VOID                  (Kind.KEYWORD, "void"),
-  WHILE                 (Kind.KEYWORD, "while"),
-  WITH                  (Kind.KEYWORD, "with"),
-  TRUE                  (Kind.KEYWORD, "true"),
-  FALSE                 (Kind.KEYWORD, "false"),
+  BREAK                 (KEYWORD, "break"),
+  CASE                  (KEYWORD, "case"),
+  CATCH                 (KEYWORD, "catch"),
+  CLASS                 (KEYWORD, "class"),
+  CONST                 (KEYWORD, "const"),
+  CONTINUE              (KEYWORD, "continue"),
+  DEBUGGER              (KEYWORD, "debugger"),
+  DEFAULT               (KEYWORD, "default"),
+  DELETE                (KEYWORD, "delete"),
+  DO                    (KEYWORD, "do"),
+  ELSE                  (KEYWORD, "else"),
+  ENUM                  (KEYWORD, "enum"),
+  EXTENDS               (KEYWORD, "extends"),
+  FINALLY               (KEYWORD, "finally"),
+  FOR                   (KEYWORD, "for"),
+  FUNCTION              (KEYWORD, "function"),
+  IF                    (KEYWORD, "if"),
+  IMPORT                (KEYWORD, "import"),
+  IN                    (KEYWORD, "in"),
+  INSTANCE_OF           (KEYWORD, "instanceof"),
+  INTERFACE             (KEYWORD, "interface"),
+  LET                   (KEYWORD, "let"),
+  NEW                   (KEYWORD, "new"),
+  NULL                  (KEYWORD, "null"),
+  RETURN                (KEYWORD, "return"),
+  SUPER                 (KEYWORD, "super"),
+  SWITCH                (KEYWORD, "switch"),
+  THIS                  (KEYWORD, "this"),
+  THROW                 (KEYWORD, "throw"),
+  TRY                   (KEYWORD, "try"),
+  TYPE_OF               (KEYWORD, "typeof"),
+  VAR                   (KEYWORD, "var"),
+  VOID                  (KEYWORD, "void"),
+  WHILE                 (KEYWORD, "while"),
+  WITH                  (KEYWORD, "with"),
+  TRUE                  (KEYWORD, "true"),
+  FALSE                 (KEYWORD, "false"),
 
   // Brackets
-  CURLY_START           (Kind.BRACKET, '{'),
-  CURLY_CLOSE           (Kind.BRACKET, '}'),
-  SQUARE_START          (Kind.BRACKET, '['),
-  SQUARE_CLOSE          (Kind.BRACKET, ']'),
-  PAREN_START           (Kind.BRACKET, '('),
-  PAREN_CLOSE           (Kind.BRACKET, ')'),
+  CURLY_START           (BRACKET, '{'),
+  CURLY_CLOSE           (BRACKET, '}'),
+  SQUARE_START          (BRACKET, '['),
+  SQUARE_CLOSE          (BRACKET, ']'),
+  PAREN_START           (BRACKET, '('),
+  PAREN_CLOSE           (BRACKET, ')'),
 
-  ID                    (Kind.OTHER),
-  STRING_LITERAL        (Kind.OTHER),
-  TEMPLATE_STRING       (Kind.OTHER),
-  NUMBER_LITERAL        (Kind.OTHER),
-  HEX_LITERAL           (Kind.OTHER),
-  OCTAL_LITERAL         (Kind.OTHER),
-  BINARY_LITERAL        (Kind.OTHER),
+  ID                    (OTHER),
+  
+  STRING_LITERAL        (LITERAL),
+  TEMPLATE_STRING       (LITERAL),
+  NUMBER_LITERAL        (LITERAL),
+  HEX_LITERAL           (LITERAL),
+  OCTAL_LITERAL         (LITERAL),
+  BINARY_LITERAL        (LITERAL),
 
   ;
 
@@ -134,7 +143,7 @@ public enum TokenType {
     Map<String, TokenType> keywords = new HashMap<>();
 
     for (TokenType type : values()) {
-      if (type.kind != Kind.KEYWORD) {
+      if (type.kind != KEYWORD) {
         continue;
       }
 
@@ -179,10 +188,10 @@ public enum TokenType {
     }
 
     if (value != null && !value.isEmpty()) {
-      return value;
+      return "'" + value + "'";
     }
 
-    return "'" + value + "'";
+    return name().toLowerCase();
   }
 
   public enum Kind {
@@ -191,6 +200,7 @@ public enum TokenType {
     UNARY,
     BRACKET,
     UNSUPPORTED,
+    LITERAL,
     OTHER
   }
 }

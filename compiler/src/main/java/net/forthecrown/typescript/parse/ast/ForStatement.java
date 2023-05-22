@@ -8,7 +8,7 @@ public class ForStatement extends Statement {
 
   private Statement statement;
 
-  private Expression first;
+  private Statement  first;
   private Expression second;
   private Expression third;
 

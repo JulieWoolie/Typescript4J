@@ -9,6 +9,8 @@ public class PropertyAccessExpr extends Expression {
   private Expression target;
   private Expression property;
 
+  private boolean elementAccess; // Whether '[' and ']' were used
+
   private boolean optional;
 
   @Override

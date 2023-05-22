@@ -1,11 +1,14 @@
 package net.forthecrown.typescript.parse.ast;
 
 
+import lombok.Getter;
+import lombok.Setter;
 import net.forthecrown.typescript.parse.Location;
 
 /**
  * Abstract syntax tree node
  */
+@Getter @Setter
 public abstract class Node {
 
   /**
@@ -21,12 +24,4 @@ public abstract class Node {
   }
 
   public abstract <R, C> R visit(NodeVisitor<R, C> visitor, C context);
-
-  public final Location getStart() {
-    return start;
-  }
-
-  public final void setStart(Location start) {
-    this.start = start;
-  }
 }

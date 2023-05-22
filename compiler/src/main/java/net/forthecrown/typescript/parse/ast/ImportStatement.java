@@ -3,7 +3,6 @@ package net.forthecrown.typescript.parse.ast;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
 @Getter @Setter
@@ -21,6 +20,7 @@ public class ImportStatement extends Statement {
 
   @Getter @Setter
   public static class ImportedBinding extends Statement {
+
     private Identifier binding;
     private Identifier alias;
 

@@ -12,8 +12,11 @@ final class ErrorMessages {
     final int lineNumber = location.line();
     final int column = location.column();
 
-    String context = input.substring(lineStart, lineEnd);
-    String errorFormat = "%s\n%s\n%" + (column + 1) + "s Line %s Column %s";
+    String context = input.substring(lineStart, lineEnd)
+        .replace("\n", "")
+        .replace("\r", "");
+
+    String errorFormat = "%s\n%s\n%" + (column) + "s Line %s Column %s";
 
     return errorFormat.formatted(
         CharReader.normalizeNewline(message),

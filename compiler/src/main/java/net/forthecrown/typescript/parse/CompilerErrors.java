@@ -2,7 +2,6 @@ package net.forthecrown.typescript.parse;
 
 import java.util.ArrayList;
 import java.util.List;
-import javax.tools.Diagnostic;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -48,6 +47,11 @@ public class CompilerErrors {
         throw factory.create(diagnostic.location, diagnostic.message);
       }
     }
+  }
+
+  public void printDebugContext(Location location, String msg, Object... format) {
+    ParseException expr = factory.create(location, "DEBUG PRINT: " + msg, format);
+    System.out.println(expr.getMessage());
   }
 
   public List<Diagnostic> getDiagnostics() {

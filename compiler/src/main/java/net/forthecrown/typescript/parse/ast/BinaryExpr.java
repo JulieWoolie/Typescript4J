@@ -1,6 +1,7 @@
 package net.forthecrown.typescript.parse.ast;
 
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import net.forthecrown.typescript.parse.Location;
 
@@ -35,37 +36,63 @@ public class BinaryExpr extends OperatorExpr {
     };
   }
 
+  @RequiredArgsConstructor
   public enum Operation {
-    INSTANCEOF,
+    INSTANCEOF ("instanceof"),
 
-    COALESCE,
+    COALESCE ("??"),
 
-    GT,
-    GTE,
-    LT,
-    LTE,
+    GT (">"),
+    GTE (">="),
+    LT ("<"),
+    LTE ("<="),
 
-    EQ,
-    NEQ,
+    EQ ("=="),
+    NEQ ("!="),
 
-    S_EQ,
-    S_NEQ,
+    S_EQ ("==="),
+    S_NEQ ("!=="),
 
-    ADD,
-    SUB,
-    MUL,
-    DIV,
-    MOD,
-    EXP,
+    ADD ("+"),
+    SUB ("-"),
+    MUL ("*"),
+    DIV ("/"),
+    MOD ("%"),
+    EXP ("**"),
 
-    SH_LEFT,
-    SH_RIGHT,
+    SH_LEFT ("<<"),
+    SH_RIGHT (">>"),
 
-    USH_LEFT,
-    USH_RIGHT,
+    USH_LEFT ("<<<"),
+    USH_RIGHT (">>>"),
 
-    XOR,
-    AND,
-    OR,
+    XOR ("^"),
+    AND ("&"),
+    OR ("|"),
+
+    ASSIGN ("="),
+    ASSIGN_OR ("|="),
+    ASSIGN_AND ("&="),
+    ASSIGN_XOR ("^="),
+    ASSIGN_SUB ("-="),
+    ASSIGN_ADD ("+="),
+    ASSIGN_DIV ("/="),
+    ASSIGN_MUL ("*="),
+    ASSIGN_MOD ("%="),
+    ASSIGN_SHIFT_LEFT ("=<<"),
+    ASSIGN_SHIFT_RIGHT ("=>>"),
+    ASSIGN_USHIFT_LEFT ("=<<<"),
+    ASSIGN_USHIFT_RIGHT ("=>>>"),
+    ASSIGN_COALESCE ("??="),
+
+    COMMA (","),
+    ;
+
+    private final String stringValue;
+
+    @Override
+    public String toString() {
+      return stringValue;
+    }
   }
 }

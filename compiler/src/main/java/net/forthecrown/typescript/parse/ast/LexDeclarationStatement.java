@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
+import net.forthecrown.typescript.parse.type.Type;
 
 @Getter @Setter
 public class LexDeclarationStatement extends Statement {
@@ -29,6 +30,8 @@ public class LexDeclarationStatement extends Statement {
   public static class SingleDeclaration extends Expression {
     private Identifier identifier;
     private Expression value;
+
+    private Type type;
 
     @Override
     public <R, C> R visit(NodeVisitor<R, C> visitor, C context) {
