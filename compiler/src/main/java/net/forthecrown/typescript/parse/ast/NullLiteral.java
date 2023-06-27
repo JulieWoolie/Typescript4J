@@ -1,14 +1,16 @@
 package net.forthecrown.typescript.parse.ast;
 
+import lombok.Getter;
 import net.forthecrown.typescript.parse.Location;
 
+@Getter
 public class NullLiteral extends Expression {
 
-  public NullLiteral(Location start) {
-    super(start);
-  }
+  private boolean undefined;
 
-  public NullLiteral() {
+  public NullLiteral(Location start, boolean undefined) {
+    super(start);
+    this.undefined = undefined;
   }
 
   @Override

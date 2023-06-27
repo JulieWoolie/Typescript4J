@@ -5,7 +5,7 @@ import lombok.Setter;
 import net.forthecrown.typescript.parse.type.Type;
 
 @Getter @Setter
-public class ParameterNode extends Statement {
+public class ParameterStatement extends Statement {
 
   private Identifier name;
   private Expression defaultValue;

@@ -52,7 +52,7 @@ public class Types {
     ObjectType type = new ObjectType(decl.getName().getName());
 
     if (decl.getSuperClass() != null) {
-      Type superType = fromName(decl.getSuperClass().getName());
+      Type superType = decl.getSuperClass();
       type.setSuperType(superType);
     }
 

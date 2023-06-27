@@ -1,4 +1,12 @@
-class Vec3 {
+interface IVec3 {
+  get_x(): number;
+
+  get_y(): number;
+
+  get_z(): number;
+}
+
+class Vec3 implements IVec3 {
   private x: number;
   private y: number;
   private z: number;
@@ -28,6 +36,10 @@ class Vec3 {
       o.get_z() + this.z
     );
   }
+
+  paramaterized<T>(input:T ): T {
+    return input;
+  }
 }
 
 function a_random_function(message: string): void {
@@ -42,7 +54,7 @@ let added = new_vec3.add(other_vec3);
 
 console.log(added);
 
-for (let i: number = 0; i < 10; i++) {
+for (let i = 0; i < 10; i++) {
   console.log("i=" + i);
 }
 
@@ -50,4 +62,12 @@ let map = new Map;
 
 for (let entry in map.entries()) {
   console.log(entry);
+}
+
+const templateString = `some text, expression=${new_vec3} more text`,
+      template_exprEnd = `someText ${other_vec3}`,
+      template_noExpr = `Hello, world!`
+
+if (template_exprEnd == templateString) {
+  console.log("Hello, world!");
 }

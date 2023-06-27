@@ -11,6 +11,8 @@ public class ForInOfStatement extends Statement {
 
   private Statement body;
 
+  private boolean of;
+
   @Override
   public <R, C> R visit(NodeVisitor<R, C> visitor, C context) {
     return visitor.visitForIn(this, context);

@@ -4,14 +4,13 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Getter @Setter
-public class FunctionDeclaration extends Statement {
+public class TaggedTemplateLiteral extends Expression {
 
-  private Identifier name;
-
-  private FunctionExpr expr;
+  private Expression expr;
+  private StringTemplateExpr template;
 
   @Override
   public <R, C> R visit(NodeVisitor<R, C> visitor, C context) {
-    return visitor.visitFunction(this, context);
+    return visitor.visitTaggedTemplate(this, context);
   }
 }

@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import com.google.common.io.Resources;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import net.forthecrown.typescript.parse.Parsers;
 import net.forthecrown.typescript.parse.ast.CompilationUnit;
 import net.forthecrown.typescript.parse.ast.PrintingVisitor;
@@ -23,9 +25,13 @@ public class TsTest {
     });
 
     StringBuffer buf = new StringBuffer();
-    PrintingVisitor visitor = new PrintingVisitor(buf);
-    unit.visit(visitor, null);
+    PrintingVisitor.printTree(unit, buf);
 
-    System.out.println(buf);
+    assertDoesNotThrow(() -> {
+      Files.writeString(
+          Path.of("test_output.ts"),
+          buf.toString()
+      );
+    });
   }
 }

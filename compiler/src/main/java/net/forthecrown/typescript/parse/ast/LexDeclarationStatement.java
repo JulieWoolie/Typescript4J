@@ -11,7 +11,7 @@ public class LexDeclarationStatement extends Statement {
 
   Kind kind;
 
-  private final List<SingleDeclaration> declarations = new ArrayList<>();
+  private final List<Expression> declarations = new ArrayList<>();
 
   @Override
   public String toString() {
@@ -28,6 +28,7 @@ public class LexDeclarationStatement extends Statement {
 
   @Getter @Setter
   public static class SingleDeclaration extends Expression {
+
     private Identifier identifier;
     private Expression value;
 

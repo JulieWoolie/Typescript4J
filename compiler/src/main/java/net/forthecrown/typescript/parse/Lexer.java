@@ -6,6 +6,7 @@ import static net.forthecrown.typescript.parse.TokenType.ARROW;
 import static net.forthecrown.typescript.parse.TokenType.ASSIGN;
 import static net.forthecrown.typescript.parse.TokenType.ASSIGN_ADD;
 import static net.forthecrown.typescript.parse.TokenType.ASSIGN_AND;
+import static net.forthecrown.typescript.parse.TokenType.ASSIGN_COALESCE;
 import static net.forthecrown.typescript.parse.TokenType.ASSIGN_DIV;
 import static net.forthecrown.typescript.parse.TokenType.ASSIGN_MOD;
 import static net.forthecrown.typescript.parse.TokenType.ASSIGN_MUL;
@@ -21,7 +22,6 @@ import static net.forthecrown.typescript.parse.TokenType.BIT_AND;
 import static net.forthecrown.typescript.parse.TokenType.BIT_NOT;
 import static net.forthecrown.typescript.parse.TokenType.BIT_OR;
 import static net.forthecrown.typescript.parse.TokenType.COALESCE;
-import static net.forthecrown.typescript.parse.TokenType.ASSIGN_COALESCE;
 import static net.forthecrown.typescript.parse.TokenType.COLON;
 import static net.forthecrown.typescript.parse.TokenType.COLON_COLON;
 import static net.forthecrown.typescript.parse.TokenType.COMMA;
@@ -62,7 +62,8 @@ import static net.forthecrown.typescript.parse.TokenType.STRICT_EQUALS;
 import static net.forthecrown.typescript.parse.TokenType.STRICT_N_EQUALS;
 import static net.forthecrown.typescript.parse.TokenType.STRING_LITERAL;
 import static net.forthecrown.typescript.parse.TokenType.SUB;
-import static net.forthecrown.typescript.parse.TokenType.TEMPLATE_STRING;
+import static net.forthecrown.typescript.parse.TokenType.TEMPLATE_EXPR;
+import static net.forthecrown.typescript.parse.TokenType.TEMPLATE_QUOTE;
 import static net.forthecrown.typescript.parse.TokenType.TERNARY;
 import static net.forthecrown.typescript.parse.TokenType.UNKNOWN;
 import static net.forthecrown.typescript.parse.TokenType.USHIFT_LEFT;
@@ -77,6 +78,8 @@ public class Lexer {
   Token peeked;
 
   Location currentLocation;
+
+  boolean insideTemplateString;
 
   public Lexer(CharReader reader) {
     this.reader = reader;
@@ -165,8 +168,8 @@ public class Lexer {
       }
 
       case '`' -> {
-        String quoted = reader.readQuoted(true);
-        yield token(TEMPLATE_STRING, quoted);
+        insideTemplateString = !insideTemplateString;
+        yield singleCharToken(TEMPLATE_QUOTE);
       }
 
       case '.' -> {
@@ -294,6 +297,11 @@ public class Lexer {
       }
 
       default -> {
+        if (insideTemplateString && peek == '$' && reader.peek(1) == '{') {
+          reader.skip(2);
+          yield token(TEMPLATE_EXPR);
+        }
+
         if (peek >= '0' && peek <= '9') {
           Token numberToken = tryReadNumber();
 

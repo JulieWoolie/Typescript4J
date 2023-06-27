@@ -6,7 +6,7 @@ import lombok.Setter;
 @Getter @Setter
 public class ForStatement extends Statement {
 
-  private Statement statement;
+  private Statement body;
 
   private Statement  first;
   private Expression second;

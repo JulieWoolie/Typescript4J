@@ -6,8 +6,8 @@ import lombok.Setter;
 @Getter @Setter
 public class IfStatement extends Statement {
 
-  private Expression expression;
-  private Statement statement;
+  private Expression condition;
+  private Statement body;
 
   private Statement elseStatement;
 

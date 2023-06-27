@@ -9,10 +9,10 @@ import net.forthecrown.typescript.parse.type.Type;
 @Getter @Setter
 public class ClassDeclaration extends Statement {
 
-  private boolean interfaceDeclaration;
-
   private Identifier name;
-  private Identifier superClass;
+  private Type superClass;
+
+  private List<Type> implementations = new ArrayList<>();
 
   private final List<TypeParameter> typeParameters = new ArrayList<>();
 
@@ -20,16 +20,26 @@ public class ClassDeclaration extends Statement {
 
   private Type type;
 
+  private ClassType classType;
+
   @Override
   public <R, C> R visit(NodeVisitor<R, C> visitor, C context) {
     return visitor.visitClassDeclaration(this, context);
+  }
+
+  public enum AccessLevel {
+    PUBLIC, PRIVATE, PROTECTED
+  }
+
+  public enum ClassType {
+    INTERFACE, REGULAR, ABSTRACT
   }
 
   @Getter @Setter
   public static abstract class ClassComponent extends Statement {
 
     private Identifier name;
-    private boolean privateComponent;
+    private AccessLevel accessLevel;
   }
 
   @Getter @Setter

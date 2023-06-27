@@ -4,14 +4,12 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Getter @Setter
-public class FunctionDeclaration extends Statement {
+public class ExportStatement extends Statement {
 
-  private Identifier name;
-
-  private FunctionExpr expr;
+  private Statement exported;
 
   @Override
   public <R, C> R visit(NodeVisitor<R, C> visitor, C context) {
-    return visitor.visitFunction(this, context);
+    return visitor.visitExport(this, context);
   }
 }

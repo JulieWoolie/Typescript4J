@@ -17,7 +17,7 @@ public final class Parsers {
 
     NameTable table = new NameTable();
 
-    TypescriptParser parser = new TypescriptParser(lexer, errors, types, table);
+    Parser parser = new Parser(lexer, errors, types, table);
     return parser.parse();
   }
 }

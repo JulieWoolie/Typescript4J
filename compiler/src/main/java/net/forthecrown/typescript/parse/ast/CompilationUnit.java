@@ -7,6 +7,10 @@ import lombok.Getter;
 @Getter
 public class CompilationUnit extends Node {
 
+  private final List<ExportStatement> exports = new ArrayList<>();
+
+  private final List<ImportStatement> imports = new ArrayList<>();
+
   private final List<Statement> statements = new ArrayList<>();
 
   @Override

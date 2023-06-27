@@ -7,7 +7,7 @@ import lombok.Setter;
 public class DoWhileStatement extends Statement {
 
   private Block body;
-  private Expression expression;
+  private Expression condition;
 
   @Override
   public <R, C> R visit(NodeVisitor<R, C> visitor, C context) {

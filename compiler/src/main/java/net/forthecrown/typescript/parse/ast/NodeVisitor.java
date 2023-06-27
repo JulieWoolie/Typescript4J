@@ -5,6 +5,8 @@ import net.forthecrown.typescript.parse.ast.ClassDeclaration.FuncComponent;
 import net.forthecrown.typescript.parse.ast.ImportStatement.ImportedBinding;
 import net.forthecrown.typescript.parse.ast.LexDeclarationStatement.SingleDeclaration;
 import net.forthecrown.typescript.parse.ast.ObjectLiteral.ObjectProperty;
+import net.forthecrown.typescript.parse.ast.StringTemplateExpr.ExprPart;
+import net.forthecrown.typescript.parse.ast.StringTemplateExpr.LiteralPart;
 import net.forthecrown.typescript.parse.ast.SwitchStatement.ClauseCase;
 import net.forthecrown.typescript.parse.ast.SwitchStatement.DefaultCase;
 import net.forthecrown.typescript.parse.ast.TryStatement.Catch;
@@ -53,7 +55,7 @@ public interface NodeVisitor<R, C> {
 
   R visitFunction(FunctionDeclaration statement, C c);
 
-  R visitFunctionParam(ParameterNode param, C c);
+  R visitFunctionParam(ParameterStatement param, C c);
 
   R visitImport(ImportStatement statement, C c);
 
@@ -72,6 +74,10 @@ public interface NodeVisitor<R, C> {
   R visitDebugger(DebuggerStatement statement, C c);
 
   R visitTypeParameter(TypeParameter statement, C c);
+
+  R visitSignature(FunctionSignature signature, C c);
+
+  R visitExport(ExportStatement statement, C c);
 
   /* ----------------------------- EXPRESSIONS ------------------------------ */
 
@@ -111,7 +117,15 @@ public interface NodeVisitor<R, C> {
 
   R visitConditional(ConditionalExpr expr, C c);
 
-  R visitArrowFunction(ArrowFunction expr, C c);
+  R visitFunction(FunctionExpr expr, C c);
 
   R visitParenthisized(ParenExpr expr, C c);
+
+  R visitTemplateExpr(ExprPart expr, C c);
+
+  R visitTemplateLiteral(LiteralPart expr, C c);
+
+  R visitTemplate(StringTemplateExpr expr, C c);
+
+  R visitTaggedTemplate(TaggedTemplateLiteral expr, C c);
 }

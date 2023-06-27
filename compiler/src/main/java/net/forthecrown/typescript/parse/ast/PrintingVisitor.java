@@ -1,260 +1,326 @@
 package net.forthecrown.typescript.parse.ast;
 
-import java.math.BigInteger;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
+import net.forthecrown.typescript.parse.ast.ClassDeclaration.AccessLevel;
 import net.forthecrown.typescript.parse.ast.ClassDeclaration.ClassComponent;
 import net.forthecrown.typescript.parse.ast.ClassDeclaration.FieldComponent;
 import net.forthecrown.typescript.parse.ast.ClassDeclaration.FuncComponent;
 import net.forthecrown.typescript.parse.ast.ImportStatement.ImportedBinding;
 import net.forthecrown.typescript.parse.ast.LexDeclarationStatement.SingleDeclaration;
 import net.forthecrown.typescript.parse.ast.ObjectLiteral.ObjectProperty;
+import net.forthecrown.typescript.parse.ast.PrintingVisitor.Printer;
+import net.forthecrown.typescript.parse.ast.StringTemplateExpr.ExprPart;
+import net.forthecrown.typescript.parse.ast.StringTemplateExpr.LiteralPart;
 import net.forthecrown.typescript.parse.ast.SwitchStatement.ClauseCase;
 import net.forthecrown.typescript.parse.ast.SwitchStatement.DefaultCase;
-import net.forthecrown.typescript.parse.ast.SwitchStatement.SwitchCase;
 import net.forthecrown.typescript.parse.ast.TryStatement.Catch;
 import net.forthecrown.typescript.parse.ast.UpdateExpr.UpdateOp;
 import net.forthecrown.typescript.parse.type.Type;
 
-@RequiredArgsConstructor
-public class PrintingVisitor implements NodeVisitor<Void, Void> {
+public class PrintingVisitor implements NodeVisitor<Void, Printer> {
 
-  private int indent = 0;
-  private final StringBuffer out;
+  private static final PrintingVisitor VISITOR = new PrintingVisitor();
 
-  private void indent() {
-    out.append("  ".repeat(indent));
-  }
+  @RequiredArgsConstructor
+  static class Printer {
 
-  private void nlIndent() {
-    out.append("\n");
-    indent();
-  }
+    private final StringBuffer out;
 
-  private void incIndent() {
-    indent++;
-  }
+    private int indent;
 
-  private void decIndent() {
-    indent--;
-  }
+    private String indentString = "  ";
 
-  private void optionalType(Type type) {
-    if (type == null) {
-      return;
+    boolean insideSwitch = false;
+
+    Printer incIndent() {
+      indent++;
+      return this;
     }
 
-    out.append(": ").append(type.getName());
+    Printer decIndent() {
+      indent--;
+      return this;
+    }
+
+    Printer appendIndent() {
+      if (indent < 1) {
+        return this;
+      }
+
+      out.append(indentString.repeat(indent));
+      return this;
+    }
+
+    Printer append(Object o) {
+      out.append(String.valueOf(o));
+      return this;
+    }
+
+    Printer append(char c) {
+      out.append(c);
+      return this;
+    }
+
+    Printer append(int c) {
+      out.append(c);
+      return this;
+    }
+
+    Printer append(boolean c) {
+      out.append(c);
+      return this;
+    }
+
+    Printer nlIndent() {
+      return append("\n").appendIndent();
+    }
+  }
+
+  public static void printTree(Node node, StringBuffer buf) {
+    Printer printer = new Printer(buf);
+    node.visit(VISITOR, printer);
+  }
+
+  void printTypeParams(List<TypeParameter> typeParameters, Printer out) {
+    out.append("<");
+    visitDelimitedList(typeParameters, ", ", out);
+    out.append(">");
+  }
+
+  <T> void visitDelimitedList(List<? extends T> list, Object delimiter, Printer out) {
+    var it = list.iterator();
+
+    while (it.hasNext()) {
+      var n = it.next();
+      printObject(n, out);
+
+      if (it.hasNext()) {
+        out.append(delimiter);
+      }
+    }
+  }
+
+  void printObject(Object o, Printer out) {
+    if (o instanceof Node node) {
+      node.visit(this, out);
+    } else if (o instanceof Type type) {
+      out.append(type.getName());
+    } else {
+      out.append(Objects.toString(o));
+    }
   }
 
   @Override
-  public Void visitRoot(CompilationUnit unit, Void unused) {
+  public Void visitRoot(CompilationUnit unit, Printer out) {
+    unit.getImports().forEach(importStatement -> {
+      out.nlIndent();
+      importStatement.visit(this, out);
+    });
+
+    unit.getExports().forEach(exportStatement -> {
+      out.nlIndent();
+      exportStatement.visit(this, out);
+    });
+
     unit.getStatements().forEach(statement -> {
-      statement.visit(this, unused);
-      nlIndent();
+      out.nlIndent();
+      statement.visit(this, out);
     });
 
     return null;
   }
 
   @Override
-  public Void visitIf(IfStatement statement, Void unused) {
+  public Void visitIf(IfStatement statement, Printer out) {
     out.append("if (");
-    statement.getExpression().visit(this, unused);
+    statement.getCondition().visit(this, out);
     out.append(")");
+    statement.getBody().visit(this, out);
+    return null;
+  }
 
-    statement.getStatement().visit(this, unused);
+  @Override
+  public Void visitFor(ForStatement statement, Printer out) {
+    out.append("for (");
+    statement.getFirst().visit(this, out);
+    out.append("; ");
+    statement.getSecond().visit(this, out);
+    out.append("; ");
+    statement.getThird().visit(this, out);
+    out.append(") ");
+    statement.getBody().visit(this, out);
+    return null;
+  }
 
-    if (statement.getElseStatement() != null) {
-      statement.getElseStatement().visit(this, unused);
+  @Override
+  public Void visitForIn(ForInOfStatement statement, Printer out) {
+    out.append("for (");
+    statement.getDeclaration().visit(this, out);
+
+    if (statement.isOf()) {
+      out.append(" of ");
+    } else {
+      out.append(" in ");
     }
 
+    statement.getObject().visit(this, out);
+    out.append(") ");
+    statement.getBody().visit(this, out);
+
     return null;
   }
 
   @Override
-  public Void visitFor(ForStatement statement, Void unused) {
-    out.append("for (");
-    statement.getFirst().visit(this, unused);
-    out.append("; ");
-    statement.getSecond().visit(this, unused);
-    out.append("; ");
-    statement.getThird().visit(this, unused);
-    out.append(")");
-
-    statement.getStatement().visit(this, unused);
-    return null;
-  }
-
-  @Override
-  public Void visitForIn(ForInOfStatement statement, Void unused) {
-    out.append("for (");
-    statement.getDeclaration().visit(this, unused);
-    out.append(" in ");
-    statement.getObject().visit(this, unused);
-    out.append(")");
-
-    statement.getBody().visit(this, unused);
-    return null;
-  }
-
-  @Override
-  public Void visitDoWhile(DoWhileStatement statement, Void unused) {
+  public Void visitDoWhile(DoWhileStatement statement, Printer out) {
     out.append("do ");
-    statement.getBody().visit(this, unused);
+    statement.getBody().visit(this, out);
     out.append(" while (");
-    statement.getExpression().visit(this, unused);
+    statement.getCondition().visit(this, out);
     out.append(")");
-
     return null;
   }
 
   @Override
-  public Void visitWhile(WhileStatement statement, Void unused) {
+  public Void visitWhile(WhileStatement statement, Printer out) {
     out.append("while (");
-    statement.getCondition().visit(this, unused);
-    out.append(")");
-    statement.getBody().visit(this, unused);
-
+    statement.getCondition().visit(this, out);
+    out.append(") ");
+    statement.getBody().visit(this, out);
     return null;
   }
 
   @Override
-  public Void visitSwitch(SwitchStatement statement, Void unused) {
+  public Void visitSwitch(SwitchStatement statement, Printer out) {
     out.append("switch (");
-    statement.getExpression().visit(this, unused);
-    out.append(") {");
-    incIndent();
+    statement.getExpression().visit(this, out);
+    out.append(") {").incIndent();
 
+    out.insideSwitch = true;
     for (var c: statement.getCases()) {
-      nlIndent();
-      c.visit(this, unused);
+      out.appendIndent();
+      c.visit(this, out);
     }
+    out.insideSwitch = false;
 
-    decIndent();
-    nlIndent();
-    out.append("}");
-
+    out.decIndent().nlIndent().append("}");
     return null;
   }
 
   @Override
-  public Void visitSwitchCase(ClauseCase statement, Void unused) {
-    out.append("case ");
-    statement.getExpression().visit(this, unused);
-    defCase(statement);
-    return null;
-  }
-
-  @Override
-  public Void visitDefaultCase(DefaultCase statement, Void unused) {
-    out.append("default");
-    defCase(statement);
-    return null;
-  }
-
-  private void defCase(SwitchCase switchCase) {
+  public Void visitSwitchCase(ClauseCase statement, Printer out) {
+    out.append("switch ");
+    statement.getExpression().visit(this, out);
     out.append(": ");
+    statement.getStatement().visit(this, out);
+    out.decIndent();
 
-    incIndent();
-    nlIndent();
-
-    switchCase.getStatement().visit(this, null);
-
-    decIndent();
-    nlIndent();
-
+    return null;
   }
 
   @Override
-  public Void visitTry(TryStatement statement, Void unused) {
-    out.append("try ");
-    statement.getBody().visit(this, unused);
+  public Void visitDefaultCase(DefaultCase statement, Printer out) {
+    out.append("default: ");
+    statement.getStatement().visit(this, out);
+    out.decIndent();
 
-    statement.getCatches().forEach(aCatch -> {
-      aCatch.visit(this, unused);
-    });
+    return null;
+  }
+
+  @Override
+  public Void visitTry(TryStatement statement, Printer out) {
+    out.append("try ");
+    statement.getBody().visit(this, out);
+
+    for (var cat: statement.getCatches()) {
+      cat.visit(this, out);
+    }
 
     if (statement.getFinallyBody() != null) {
       out.append("finally ");
-      statement.getFinallyBody().visit(this, unused);
+      statement.getFinallyBody().visit(this, out);
     }
 
     return null;
   }
 
   @Override
-  public Void visitCatch(Catch statement, Void unused) {
+  public Void visitCatch(Catch statement, Printer out) {
     out.append("catch (");
-    statement.getLabel().visit(this, unused);
-    optionalType(statement.getErrorType());
-
-    out.append(")");
-    statement.getBody().visit(this, unused);
-
+    statement.getLabel().visit(this, out);
+    out.append(") ");
+    statement.getBody().visit(this, out);
     return null;
   }
 
   @Override
-  public Void visitContinue(ContinueStatement statement, Void unused) {
+  public Void visitContinue(ContinueStatement statement, Printer out) {
     out.append("continue");
 
     if (statement.getLabel() != null) {
-      out.append(' ');
-      statement.getLabel().visit(this, unused);
+      out.append(" ");
+      statement.getLabel().visit(this, out);
     }
 
-    out.append(";");
     return null;
   }
 
   @Override
-  public Void visitBreak(BreakStatement statement, Void unused) {
+  public Void visitBreak(BreakStatement statement, Printer out) {
     out.append("break");
 
     if (statement.getLabel() != null) {
-      out.append(' ');
-      statement.getLabel().visit(this, unused);
+      out.append(" ");
+      statement.getLabel().visit(this, out);
     }
 
-    out.append(";");
     return null;
   }
 
   @Override
-  public Void visitBlock(Block block, Void unused) {
-    out.append("{");
-
+  public Void visitBlock(Block block, Printer out) {
     if (block.getStatements().isEmpty()) {
+      return null;
+    }
+
+    boolean insideSwitch = out.insideSwitch;
+    out.insideSwitch = false;
+
+    if (!insideSwitch) {
+      out.append("{");
+    }
+
+    out.incIndent();
+
+    for (var stat: block.getStatements()) {
+      out.nlIndent();
+      stat.visit(this, out);
+    }
+
+    out.decIndent()
+        .nlIndent();
+
+    if (!insideSwitch) {
       out.append("}");
     }
 
-    incIndent();
-
-    block.getStatements().forEach(statement -> {
-      nlIndent();
-      statement.visit(this, unused);
-    });
-
-    decIndent();
-    nlIndent();
-    out.append("}");
-
+    out.insideSwitch = insideSwitch;
     return null;
   }
 
   @Override
-  public Void visitLexicalDeclaration(LexDeclarationStatement statement, Void unused) {
-    String type = statement.getKind().name().toLowerCase();
-    out.append(type);
-    out.append(" ");
+  public Void visitLexicalDeclaration(
+      LexDeclarationStatement statement,
+      Printer out
+  ) {
+    out.append(statement.getKind().name().toLowerCase()).append(" ");
 
     var it = statement.getDeclarations().iterator();
 
     while (it.hasNext()) {
-      var n = it.next();
-
-      n.visit(this, unused);
+      var decl = it.next();
+      decl.visit(this, out);
 
       if (it.hasNext()) {
         out.append(", ");
@@ -265,272 +331,210 @@ public class PrintingVisitor implements NodeVisitor<Void, Void> {
   }
 
   @Override
-  public Void visitSingleLexDeclaration(SingleDeclaration statement, Void unused) {
-    statement.getIdentifier().visit(this, unused);
-    optionalType(statement.getType());
+  public Void visitSingleLexDeclaration(SingleDeclaration statement, Printer out) {
+    statement.getIdentifier().visit(this, out);
+
+    if (statement.getType() != null) {
+      out.append(": ").append(statement.getType().getName());
+    }
 
     if (statement.getValue() != null) {
       out.append(" = ");
-      statement.getValue().visit(this, unused);
+      statement.getValue().visit(this, out);
     }
 
     return null;
   }
 
   @Override
-  public Void visitClassDeclaration(ClassDeclaration statement, Void unused) {
-    out.append("class ");
-    statement.getName().visit(this, unused);
+  public Void visitClassDeclaration(ClassDeclaration statement, Printer out) {
+    switch (statement.getClassType()) {
+      case REGULAR -> out.append("class");
+      case ABSTRACT -> out.append("abstract class");
+      case INTERFACE -> out.append("interface");
+    }
+
+    out.append(" ");
+
+    statement.getName().visit(this, out);
 
     if (!statement.getTypeParameters().isEmpty()) {
-      typeParams(statement.getTypeParameters());
+      printTypeParams(statement.getTypeParameters(), out);
     }
 
     if (statement.getSuperClass() != null) {
-      out.append(" extends ");
-      statement.getSuperClass().visit(this, unused);
+      out.append(" extends ").append(statement.getSuperClass().getName());
     }
 
-    out.append("{");
-
-    if (statement.getComponents().isEmpty()) {
-      out.append("}");
-      return null;
+    if (!statement.getImplementations().isEmpty()) {
+      out.append(" implements ");
+      visitDelimitedList(statement.getImplementations(), ", ", out);
     }
 
-    incIndent();
+    out.append("{").incIndent();
 
-    statement.getComponents().forEach(classComponent -> {
-      nlIndent();
-      nlIndent();
-      classComponent.visit(this, unused);
-    });
+    for (var n : statement.getComponents()) {
+      out.nlIndent();
+      n.visit(this, out);
+    }
 
-    decIndent();
-    nlIndent();
-    out.append("}");
-
+    out.decIndent().nlIndent().append("}");
     return null;
   }
 
   @Override
-  public Void visitClassField(FieldComponent statement, Void unused) {
-    visitComponent(statement);
-    optionalType(statement.getType());
+  public Void visitClassField(FieldComponent statement, Printer out) {
+    componentPrefix(statement, out);
+
+    if (statement.getType() != null) {
+      out.append(": ");
+      out.append(statement.getType().getName());
+    }
 
     if (statement.getValue() != null) {
-      statement.getValue().visit(this, unused);
+      out.append(" = ");
+      statement.getValue().visit(this, out);
     }
-
-    out.append(";");
-    return null;
-  }
-
-  private void visitComponent(ClassComponent c) {
-    if (c.isPrivateComponent()) {
-      out.append("private ");
-    }
-
-    c.getName().visit(this, null);
-  }
-
-  @Override
-  public Void visitClassMethod(FuncComponent statement, Void unused) {
-    if (statement.isPrivateComponent()) {
-      out.append("private ");
-    }
-
-    if (!statement.getSignature().getTypeParameters().isEmpty()) {
-      typeParams(statement.getSignature().getTypeParameters());
-    }
-
-    statement.getName().visit(this, unused);
-    visitSignature(false, statement.getSignature());
-
-    statement.getBody().visit(this, unused);
 
     return null;
   }
 
-  private void parameterList(List<ParameterNode> params) {
-    out.append("(");
-    var it = params.iterator();
+  @Override
+  public Void visitClassMethod(FuncComponent statement, Printer out) {
+    componentPrefix(statement, out);
+    statement.getSignature().visit(this, out);
 
-    while (it.hasNext()) {
-      var n = it.next();
-
-      n.visit(this, null);
-
-      if (it.hasNext()) {
-        out.append(", ");
-      }
+    if (statement.getBody() != null) {
+      out.append(" ");
+      statement.getBody().visit(this, out);
     }
 
-    out.append(")");
+    return null;
   }
 
-  private void typeParams(List<TypeParameter> params) {
-    out.append("<");
-
-    var it = params.iterator();
-
-    while (it.hasNext()) {
-      var n = it.next();
-
-      n.visit(this, null);
-
-      if (it.hasNext()) {
-        out.append(", ");
-      }
+  private void componentPrefix(ClassComponent component, Printer out) {
+    if (component.getAccessLevel() != AccessLevel.PUBLIC) {
+      out.append(component.getAccessLevel().name().toLowerCase());
+      out.append(" ");
     }
 
-    out.append(">");
-  }
-
-  private void visitSignature(boolean writeTypeParams, FunctionSignature signature) {
-    if (writeTypeParams && !signature.getTypeParameters().isEmpty()) {
-      typeParams(signature.getTypeParameters());
-    }
-
-    parameterList(signature.getParameters());
-    optionalType(signature.getReturnType());
-    out.append(" ");
+    component.getName().visit(this, out);
   }
 
   @Override
-  public Void visitFunction(FunctionDeclaration statement, Void unused) {
+  public Void visitFunction(FunctionDeclaration statement, Printer out) {
     out.append("function ");
-
-    if (!statement.getFunction().getTypeParameters().isEmpty()) {
-      typeParams(statement.getFunction().getTypeParameters());
-    }
-
-    statement.getName().visit(this, unused);
-    visitSignature(false, statement.getFunction());
-
-    statement.getBody().visit(this, unused);
+    statement.getName().visit(this, out);
+    statement.getExpr().visit(this, out);
     return null;
   }
 
   @Override
-  public Void visitFunctionParam(ParameterNode param, Void unused) {
-    param.getName().visit(this, unused);
-    optionalType(param.getType());
+  public Void visitFunctionParam(ParameterStatement param, Printer out) {
+    if (param.isVarArgs()) {
+      out.append("...");
+    }
+
+    param.getName().visit(this, out);
+    if (param.getType() != null) {
+      out.append(": ");
+      out.append(param.getType().getName());
+    }
 
     if (param.getDefaultValue() != null) {
       out.append(" = ");
-      param.getDefaultValue().visit(this, unused);
+      param.getDefaultValue().visit(this, out);
     }
 
     return null;
   }
 
   @Override
-  public Void visitImport(ImportStatement statement, Void unused) {
+  public Void visitImport(ImportStatement statement, Printer out) {
     out.append("import ");
-    boolean simpleImport = true;
+    boolean needsFrom = false;
 
     if (statement.isStarImport()) {
       out.append("* ");
-      simpleImport = false;
-    } else if (statement.getImports().size() == 1) {
-      statement.getImports().get(0).visit(this, unused);
-      simpleImport = false;
-    } else if (statement.getImports().isEmpty()) {
-      simpleImport = true;
-    } else {
-      out.append("{ ");
-
-      var it = statement.getImports().iterator();
-
-      while (it.hasNext()) {
-        var n = it.next();
-        n.visit(this, unused);
-
-        if (it.hasNext()) {
-          out.append(", ");
-        }
-      }
-
-      out.append(" }");
-      simpleImport = false;
+      needsFrom = true;
+    } else if (!statement.getImports().isEmpty()) {
+      out.append("{");
+      visitDelimitedList(statement.getImports(), ", ", out);
+      out.append("} ");
+      needsFrom = true;
     }
 
     if (statement.getAlias() != null) {
-      out.append(" as ");
-      statement.getAlias().visit(this, unused);
-      simpleImport = false;
+      out.append("as ");
+      statement.getAlias().visit(this, out);
+      needsFrom = true;
     }
 
-    if (!simpleImport) {
-      out.append(" from ");
+    if (needsFrom) {
+      out.append("from ");
     }
 
-    statement.getModuleName().visit(this, unused);
-    out.append(";");
-
+    statement.getModuleName().visit(this, out);
     return null;
   }
 
   @Override
-  public Void visitBindingImport(ImportedBinding statement, Void unused) {
-    statement.getBinding().visit(this, unused);
+  public Void visitBindingImport(ImportedBinding statement, Printer out) {
+    statement.getBinding().visit(this, out);
 
     if (statement.getAlias() != null) {
       out.append(" as ");
-      statement.getAlias().visit(this, unused);
+      statement.getAlias().visit(this, out);
     }
 
     return null;
   }
 
   @Override
-  public Void visitLabelled(LabelledStatement statement, Void unused) {
-    statement.getLabel().visit(this, unused);
+  public Void visitLabelled(LabelledStatement statement, Printer out) {
+    statement.getLabel().visit(this, out);
     out.append(": ");
-    statement.getStatement().visit(this, unused);
-
+    statement.getStatement().visit(this, out);
     return null;
   }
 
   @Override
-  public Void visitExprStatement(ExprStatement statement, Void unused) {
-    return statement.getExpr().visit(this, unused);
+  public Void visitExprStatement(ExprStatement statement, Printer out) {
+    return statement.getExpr().visit(this, out);
   }
 
   @Override
-  public Void visitEmptyStatement(EmptyStatement statement, Void unused) {
-    out.append("/* Empty */ ;");
+  public Void visitEmptyStatement(EmptyStatement statement, Printer out) {
+    out.append(";");
     return null;
   }
 
   @Override
-  public Void visitReturn(ReturnStatement statement, Void unused) {
+  public Void visitReturn(ReturnStatement statement, Printer out) {
     out.append("return");
 
     if (statement.getReturnValue() != null) {
       out.append(" ");
-      statement.getReturnValue().visit(this, unused);
+      statement.getReturnValue().visit(this, out);
     }
 
-    out.append(";");
     return null;
   }
 
   @Override
-  public Void visitThrow(ThrowStatement statement, Void unused) {
+  public Void visitThrow(ThrowStatement statement, Printer out) {
     out.append("throw ");
-    statement.getThrowValue().visit(this, unused);
+    statement.getThrowValue().visit(this, out);
     return null;
   }
 
   @Override
-  public Void visitDebugger(DebuggerStatement statement, Void unused) {
+  public Void visitDebugger(DebuggerStatement statement, Printer out) {
     out.append("debugger");
 
     if (statement.getMessage() != null) {
       out.append(" ");
-      statement.getMessage().visit(this, unused);
+      statement.getMessage().visit(this, out);
     }
 
     out.append(";");
@@ -538,8 +542,8 @@ public class PrintingVisitor implements NodeVisitor<Void, Void> {
   }
 
   @Override
-  public Void visitTypeParameter(TypeParameter statement, Void unused) {
-    statement.getName().visit(this, unused);
+  public Void visitTypeParameter(TypeParameter statement, Printer out) {
+    statement.getName().visit(this, out);
 
     if (statement.getSuperType() != null) {
       out.append(" extends ");
@@ -550,156 +554,153 @@ public class PrintingVisitor implements NodeVisitor<Void, Void> {
   }
 
   @Override
-  public Void visitIdentifier(Identifier expr, Void unused) {
+  public Void visitSignature(FunctionSignature signature, Printer out) {
+    if (!signature.getTypeParameters().isEmpty()) {
+      printTypeParams(signature.getTypeParameters(), out);
+    }
+
+    out.append("(");
+    visitDelimitedList(signature.getParameters(), ", ", out);
+    out.append(")");
+
+    if (signature.getReturnType() != null) {
+      out.append(": ");
+      out.append(signature.getReturnType().getName());
+    }
+
+    return null;
+  }
+
+  @Override
+  public Void visitExport(ExportStatement statement, Printer out) {
+    out.append("export ");
+    statement.getExported().visit(this, out);
+    return null;
+  }
+
+  @Override
+  public Void visitIdentifier(Identifier expr, Printer out) {
     out.append(expr.getName());
     return null;
   }
 
   @Override
-  public Void visitArrayLiteral(ArrayLiteral expr, Void unused) {
+  public Void visitArrayLiteral(ArrayLiteral expr, Printer out) {
     out.append("[");
-
-    if (expr.getValues().isEmpty()) {
-      out.append("]");
-      return null;
-    }
-
-    incIndent();
-
-    var it = expr.getValues().iterator();
-
-    while (it.hasNext()) {
-      nlIndent();
-      var n = it.next();
-
-      if (it.hasNext()) {
-        out.append(",");
-      }
-    }
-
-    decIndent();
-    nlIndent();
+    visitDelimitedList(expr.getValues(), ", ", out);
     out.append("]");
+    return null;
+  }
+
+  @Override
+  public Void visitStringLiteral(StringLiteral expr, Printer out) {
+    out.append('"')
+        .append(expr.getValue())
+        .append('"');
 
     return null;
   }
 
   @Override
-  public Void visitStringLiteral(StringLiteral expr, Void unused) {
-    out.append('"');
-    out.append(expr.getValue());
-    out.append('"');
-    return null;
-  }
-
-  @Override
-  public Void visitNullLiteral(NullLiteral expr, Void unused) {
+  public Void visitNullLiteral(NullLiteral expr, Printer out) {
     out.append("null");
     return null;
   }
 
   @Override
-  public Void visitNumberLiteral(NumberLiteral expr, Void unused) {
-    Number val = expr.getValue();
-    out.append(val);
-
-    if (val instanceof BigInteger) {
-      out.append("n");
-    }
-
+  public Void visitNumberLiteral(NumberLiteral expr, Printer out) {
+    out.append(expr.getValue());
     return null;
   }
 
   @Override
-  public Void visitBooleanLiteral(BooleanLiteral expr, Void unused) {
+  public Void visitBooleanLiteral(BooleanLiteral expr, Printer out) {
     out.append(expr.value());
     return null;
   }
 
   @Override
-  public Void visitObjectLiteral(ObjectLiteral expr, Void unused) {
+  public Void visitObjectLiteral(ObjectLiteral expr, Printer out) {
+    boolean isMultiLine = !expr.isDestructuring();
     out.append("{");
 
-    if (expr.getProperties().isEmpty()) {
-      out.append("}");
-      return null;
+    if (isMultiLine) {
+      out.incIndent();
     }
 
-    incIndent();
-
     var it = expr.getProperties().iterator();
-
     while (it.hasNext()) {
-      var n = it.next();
+      out.nlIndent();
 
-      nlIndent();
-      n.visit(this, unused);
+      var prop = it.next();
+      prop.visit(this, out);
 
       if (it.hasNext()) {
         out.append(",");
       }
     }
 
-    decIndent();
-    nlIndent();
-    out.append("}");
-
-    return null;
-  }
-
-  @Override
-  public Void visitObjectProperty(ObjectProperty expr, Void unused) {
-    expr.getKey().visit(this, unused);
-
-    if (expr.getValue() != null) {
-      out.append(": ");
-      expr.getValue().visit(this, unused);
+    if (isMultiLine) {
+      out.decIndent().nlIndent();
     }
 
+    out.append("}");
     return null;
   }
 
   @Override
-  public Void visitThisExpr(ThisExpr expr, Void unused) {
+  public Void visitObjectProperty(ObjectProperty expr, Printer out) {
+    expr.getKey().visit(this, out);
+
+    if (expr.getValue() == null) {
+      return null;
+    }
+
+    if (!(expr.getValue() instanceof FunctionExpr)) {
+      out.append(": ");
+    }
+
+    expr.getValue().visit(this, out);
+    return null;
+  }
+
+  @Override
+  public Void visitThisExpr(ThisExpr expr, Printer out) {
     out.append("this");
     return null;
   }
 
   @Override
-  public Void visitEmptyExpr(EmptyExpr expr, Void unused) {
+  public Void visitEmptyExpr(EmptyExpr expr, Printer out) {
     return null;
   }
 
   @Override
-  public Void visitBinaryExpr(BinaryExpr expr, Void unused) {
-    expr.getLeft().visit(this, unused);
-    out.append(' ');
-    out.append(expr.getOperation());
-    out.append(' ');
-    expr.getRight().visit(this, unused);
-
+  public Void visitBinaryExpr(BinaryExpr expr, Printer out) {
+    expr.getLeft().visit(this, out);
+    out.append(" ").append(expr.getOperation().toString()).append(" ");
+    expr.getRight().visit(this, out);
     return null;
   }
 
   @Override
-  public Void visitUnary(UnaryExpr expr, Void unused) {
-    String strVal = switch (expr.getOp()) {
-      case NEGATIVE -> "-";
-      case POSITIVE -> "+";
-      case BIT_NOT  -> "~";
-      case LOG_NOT  -> "!";
-      default -> expr.getOp().name().toLowerCase();
-    };
+  public Void visitUnary(UnaryExpr expr, Printer out) {
+    switch (expr.getOp()) {
+      case POSITIVE -> out.append("+");
+      case NEGATIVE -> out.append("-");
+      case VOID -> out.append("void ");
+      case DELETE -> out.append("delete ");
+      case TYPEOF -> out.append("typeof ");
+      case BIT_NOT -> out.append("~");
+      case LOG_NOT -> out.append("!");
+    }
 
-    out.append(strVal);
-    out.append(' ');
-    expr.getExpr().visit(this, unused);
-
+    expr.getExpr().visit(this, out);
     return null;
   }
 
   @Override
-  public Void visitUpdate(UpdateExpr expr, Void unused) {
+  public Void visitUpdate(UpdateExpr expr, Printer out) {
     UpdateOp op = expr.getOperation();
 
     if (op == UpdateOp.PRE_INC) {
@@ -708,11 +709,11 @@ public class PrintingVisitor implements NodeVisitor<Void, Void> {
       out.append("--");
     }
 
-    expr.getExpr().visit(this, unused);
+    expr.getExpr().visit(this, out);
 
     if (op == UpdateOp.POST_INC) {
       out.append("++");
-    } else {
+    } else if (op == UpdateOp.POST_DEC) {
       out.append("--");
     }
 
@@ -720,35 +721,36 @@ public class PrintingVisitor implements NodeVisitor<Void, Void> {
   }
 
   @Override
-  public Void visitNew(NewExpr expr, Void unused) {
+  public Void visitNew(NewExpr expr, Printer out) {
     out.append("new ");
-    expr.getTarget().visit(this, unused);
+    expr.getTarget().visit(this, out);
 
     if (!expr.getArguments().isEmpty()) {
-      argumentList(expr.getArguments());
+      argumentList(expr.getArguments(), out);
     }
 
     if (expr.getInitializer() != null) {
-      out.append(" ");
-      expr.getInitializer().visit(this, unused);
+      expr.getInitializer().visit(this, out);
     }
 
     return null;
   }
 
   @Override
-  public Void visitPropertyAccess(PropertyAccessExpr expr, Void unused) {
-    expr.getTarget().visit(this, unused);
+  public Void visitPropertyAccess(PropertyAccessExpr expr, Printer out) {
+    expr.getTarget().visit(this, out);
 
     if (expr.isOptional()) {
-      out.append("?.");
-    } else if (expr.isElementAccess()) {
-      out.append("[");
-    } else {
-      out.append(".");
+      out.append('?');
     }
 
-    expr.getProperty().visit(this, unused);
+    out.append('.');
+
+    if (expr.isElementAccess()) {
+      out.append("[");
+    }
+
+    expr.getProperty().visit(this, out);
 
     if (expr.isElementAccess()) {
       out.append("]");
@@ -758,20 +760,19 @@ public class PrintingVisitor implements NodeVisitor<Void, Void> {
   }
 
   @Override
-  public Void visitFunctionCall(CallExpr expr, Void unused) {
-    expr.getTarget().visit(this, unused);
-    argumentList(expr.getArguments());
+  public Void visitFunctionCall(CallExpr expr, Printer out) {
+    expr.getTarget().visit(this, out);
+    argumentList(expr.getArguments(), out);
     return null;
   }
 
-  private void argumentList(List<Expression> args) {
+  void argumentList(List<Expression> arguments, Printer out) {
     out.append("(");
-
-    var it = args.iterator();
+    var it = arguments.iterator();
 
     while (it.hasNext()) {
       var n = it.next();
-      n.visit(this, null);
+      n.visit(this, out);
 
       if (it.hasNext()) {
         out.append(", ");
@@ -782,42 +783,69 @@ public class PrintingVisitor implements NodeVisitor<Void, Void> {
   }
 
   @Override
-  public Void visitErrorExpr(ErrorExpr expr, Void unused) {
-    out.append("/* ERROR: ");
-    out.append('"');
-    out.append(expr.getMessage());
-    out.append('"');
-    out.append("*/");
-
+  public Void visitErrorExpr(ErrorExpr expr, Printer out) {
+    out.append("/*").append(expr.getMessage()).append("*/");
     return null;
   }
 
   @Override
-  public Void visitConditional(ConditionalExpr expr, Void unused) {
-    expr.getCondition().visit(this, unused);
-
+  public Void visitConditional(ConditionalExpr expr, Printer out) {
+    expr.getCondition().visit(this, out);
     out.append(" ? ");
-    expr.getOnTrue().visit(this, unused);
+    expr.getOnTrue().visit(this, out);
     out.append(" : ");
-    expr.getOnFalse().visit(this, unused);
+    expr.getOnFalse().visit(this, out);
 
     return null;
   }
 
   @Override
-  public Void visitArrowFunction(ArrowFunction expr, Void unused) {
-    visitSignature(true, expr.getNode());
-    out.append(" => ");
-    expr.getBody().visit(this, unused);
+  public Void visitFunction(FunctionExpr expr, Printer out) {
+    expr.getSignature().visit(this, out);
 
-    return null;
+    if (expr.isArrowFunction()) {
+      out.append(" => ");
+    }
+
+    return expr.getBody().visit(this, out);
   }
 
   @Override
-  public Void visitParenthisized(ParenExpr expr, Void unused) {
+  public Void visitParenthisized(ParenExpr expr, Printer out) {
     out.append("(");
-    expr.getExpr().visit(this, unused);
+    expr.getExpr().visit(this, out);
     out.append(")");
+    return null;
+  }
+
+  @Override
+  public Void visitTemplateExpr(ExprPart expr, Printer out) {
+    out.append("${");
+    expr.getExpr().visit(this, out);
+    out.append("}");
+
+    return null;
+  }
+
+  @Override
+  public Void visitTemplateLiteral(LiteralPart expr, Printer out) {
+    out.append(expr.getValue());
+    return null;
+  }
+
+  @Override
+  public Void visitTemplate(StringTemplateExpr expr, Printer out) {
+    out.append("`");
+    expr.getParts().forEach(templatePart -> templatePart.visit(this, out));
+    out.append("`");
+    return null;
+  }
+
+  @Override
+  public Void visitTaggedTemplate(TaggedTemplateLiteral expr, Printer out) {
+    expr.getExpr().visit(this, out);
+    expr.getTemplate().visit(this, out);
+
     return null;
   }
 }

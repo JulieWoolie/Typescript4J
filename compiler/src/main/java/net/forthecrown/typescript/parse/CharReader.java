@@ -85,7 +85,7 @@ public final class CharReader {
     return peek(0);
   }
 
-  private int peek(int i) {
+  public int peek(int i) {
     int peekIndex = index + i;
 
     if (peekIndex >= input.length()) {
@@ -195,8 +195,13 @@ public final class CharReader {
 
   public String readQuoted(boolean allowNewline) throws ParseException {
     int quote = expect('"', '\'', '`');
-    readQuotedInterior(allowNewline, quote);
+    readQuotedInterior(allowNewline, quote, false);
     expect(quote);
+    return normalizeNewline(quotebuf.toString());
+  }
+
+  public String readTemplateSection() throws ParseException {
+    readQuotedInterior(true, '`', true);
     return normalizeNewline(quotebuf.toString());
   }
 
@@ -216,7 +221,11 @@ public final class CharReader {
     }
   }
 
-  private void readQuotedInterior(boolean allowNewlines, int quote) {
+  public void readQuotedInterior(
+      boolean allowNewlines,
+      int quote,
+      boolean stopAtTemplate
+  ) {
     if (!quotebuf.isEmpty()) {
       quotebuf.delete(0, quotebuf.length());
     }
@@ -234,6 +243,10 @@ public final class CharReader {
       // Handle new lines
       if (peek == '\n' || peek == '\r') {
         if (escaped) {
+          if (allowNewlines) {
+            throw factory.create(loc, "Invalid escape");
+          }
+
           skipNewline();
           escaped = false;
           quotebuf.append("\n");
@@ -278,6 +291,10 @@ public final class CharReader {
           continue;
         }
 
+        break;
+      }
+
+      if (stopAtTemplate && !escaped && peek == '$' && peek(1) == '{') {
         break;
       }
 

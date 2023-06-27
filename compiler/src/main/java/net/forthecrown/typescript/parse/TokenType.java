@@ -77,9 +77,9 @@ public enum TokenType {
   ARROW(OTHER, "=>"),
 
   // Keywords
-  EXPORT                (UNSUPPORTED, "export"),
   YIELD                 (UNSUPPORTED, "yield"),
 
+  ABSTRACT              (KEYWORD, "abstract"),
   BREAK                 (KEYWORD, "break"),
   CASE                  (KEYWORD, "case"),
   CATCH                 (KEYWORD, "catch"),
@@ -88,11 +88,13 @@ public enum TokenType {
   CONTINUE              (KEYWORD, "continue"),
   DEBUGGER              (KEYWORD, "debugger"),
   DEFAULT               (KEYWORD, "default"),
+  DECLARE               (KEYWORD, "declare"),
   DELETE                (KEYWORD, "delete"),
   DO                    (KEYWORD, "do"),
   ELSE                  (KEYWORD, "else"),
   ENUM                  (KEYWORD, "enum"),
   EXTENDS               (KEYWORD, "extends"),
+  EXPORT                (KEYWORD, "export"),
   FINALLY               (KEYWORD, "finally"),
   FOR                   (KEYWORD, "for"),
   FUNCTION              (KEYWORD, "function"),
@@ -104,6 +106,7 @@ public enum TokenType {
   LET                   (KEYWORD, "let"),
   NEW                   (KEYWORD, "new"),
   NULL                  (KEYWORD, "null"),
+  UNDEFINED             (KEYWORD, "undefined"),
   RETURN                (KEYWORD, "return"),
   SUPER                 (KEYWORD, "super"),
   SWITCH                (KEYWORD, "switch"),
@@ -127,9 +130,11 @@ public enum TokenType {
   PAREN_CLOSE           (BRACKET, ')'),
 
   ID                    (OTHER),
+
+  TEMPLATE_QUOTE        (OTHER),
+  TEMPLATE_EXPR         (OTHER),
   
   STRING_LITERAL        (LITERAL),
-  TEMPLATE_STRING       (LITERAL),
   NUMBER_LITERAL        (LITERAL),
   HEX_LITERAL           (LITERAL),
   OCTAL_LITERAL         (LITERAL),
